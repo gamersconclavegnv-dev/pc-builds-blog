@@ -39,40 +39,30 @@ export default function DonatePage() {
             &#9608; A MESSAGE FROM GAMER'S CONCLAVE &#9608;
           </div>
 
-          {/* Thumbs up cat image */}
-          <img
-            src="https://i.imgur.com/9VNBpCX.jpeg"
-            alt="Thumbs up cat says thank you"
-            style={{
-              width: '220px',
-              height: '220px',
-              objectFit: 'cover',
-              border: '3px solid #00ff00',
-              marginBottom: '20px',
-              imageRendering: 'auto',
-              filter: 'sepia(20%) hue-rotate(80deg) saturate(1.2)',
-            }}
-            onError={e => {
-              // fallback to ascii cat if image fails
-              e.target.style.display = 'none';
-            }}
-          />
-
-          {/* ASCII fallback cat always shown as backup */}
-          <pre style={{ color: '#00ff00', fontSize: '12px', lineHeight: '1.4', margin: '0 auto 16px', display: 'inline-block', textAlign: 'left' }}>{`
-    /\\_____/\\
-   /  ^   ^  \\
-  ( ==  ω  == )    👍
-   )         (
-  (  |     |  )
- _)_|_____|_(_
-   THANK YOU!!`}
+          {/* ASCII CAT */}
+          <pre style={{
+            color: '#00ff00',
+            fontSize: '13px',
+            lineHeight: '1.4',
+            margin: '0 auto 20px',
+            display: 'inline-block',
+            textAlign: 'left',
+            textShadow: '0 0 6px #00ff00',
+          }}>{`
+   /\\_____/\\
+  /  ^   ^  \\
+ ( ==  ω  == )  👍
+  )         (
+ (  |     |  )
+  \\_________/
+  
+  THANK YOU!!!`}
           </pre>
 
-          <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '3px', color: '#ffff00', marginBottom: '10px' }}>
+          <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '3px', color: '#ffff00', marginBottom: '12px' }}>
             THANK YOU FOR YOUR PATRONAGE!
           </div>
-          <div style={{ fontSize: '13px', color: '#009900', lineHeight: '1.8' }}>
+          <div style={{ fontSize: '13px', color: '#009900', lineHeight: '1.9' }}>
             Donations go to <span style={{ color: '#00ff00', fontWeight: 'bold' }}>Gamer's Conclave</span>,
             brought to life by <span style={{ color: '#00ff00', fontWeight: 'bold' }}>Jacob</span>.<br />
             Every dollar keeps this site ad-free and the community growing.
@@ -88,7 +78,7 @@ export default function DonatePage() {
             Scan the QR code with your phone camera or Venmo app
           </div>
 
-          {/* QR CODE — embedded as base64 from uploaded image */}
+          {/* QR CODE */}
           <div style={{ display: 'inline-block', backgroundColor: '#ffffff', padding: '16px', border: '3px solid #00ff00', marginBottom: '20px' }}>
             <img
               src="/venmo-qr.png"
@@ -102,7 +92,6 @@ export default function DonatePage() {
             <span style={{ color: '#00ff00', fontWeight: 'bold', letterSpacing: '1px' }}>Jacob-Campbell-33</span>
           </div>
 
-          {/* Venmo link button */}
           <a
             href="https://venmo.com/u/Jacob-Campbell-33"
             target="_blank"
@@ -111,7 +100,6 @@ export default function DonatePage() {
               display: 'inline-block',
               backgroundColor: '#00ff00',
               color: '#000',
-              border: 'none',
               padding: '10px 28px',
               fontSize: '14px',
               fontFamily: '"Courier New", monospace',
@@ -129,7 +117,7 @@ export default function DonatePage() {
           </div>
         </div>
 
-        {/* WHAT YOUR DONATION DOES */}
+        {/* WHERE MONEY GOES */}
         <div style={{ border: '1px solid #003300', backgroundColor: '#0d0d0d', padding: '24px', width: '100%', boxSizing: 'border-box' }}>
           <div style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', marginBottom: '16px' }}>
             &gt; WHERE YOUR MONEY GOES
@@ -163,6 +151,7 @@ export default function DonatePage() {
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
         <span>GAMER'S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
       </footer>
+
     </main>
   );
 }
