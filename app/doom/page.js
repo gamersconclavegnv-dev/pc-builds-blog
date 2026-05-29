@@ -11,7 +11,7 @@ export default function DoomPage() {
 
   // DOS.zone direct game page — has mobile touch controls built in
   const DOOM_IFRAME_URL =
-    'https://dos.zone/player/?bundleUrl=https%3A%2F%2Fcdn.dos.zone%2Foriginal%2F2X%2F1%2F1955903daa3f6c7a6c0f4f30437b1fe7d60a2c3e.jsdos&anonymous=1&mobileControls=1';
+    'https://js-dos.com/games/doom.exe.html';
 
   const DOOM_DIRECT_URL = 'https://dos.zone/doom-dec-1993/';
 
