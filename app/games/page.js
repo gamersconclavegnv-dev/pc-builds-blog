@@ -20,8 +20,61 @@ const GAMES = [
   },
 ];
 
+const btnStyle = {
+  backgroundColor: '#111',
+  border: '2px solid #00ff00',
+  color: '#00ff00',
+  width: '56px',
+  height: '56px',
+  fontSize: '22px',
+  cursor: 'pointer',
+  borderRadius: '6px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  touchAction: 'manipulation',
+};
+
+function TouchControls({ onDirection, onRestart }) {
+  return (
+    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button style={btnStyle}
+          onTouchStart={(e) => { e.preventDefault(); onDirection('up'); }}
+          onMouseDown={() => onDirection('up')}>▲</button>
+      </div>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <button style={btnStyle}
+          onTouchStart={(e) => { e.preventDefault(); onDirection('left'); }}
+          onMouseDown={() => onDirection('left')}>◄</button>
+        <button style={{ ...btnStyle, backgroundColor: '#003300', fontSize: '13px' }}
+          onTouchStart={(e) => { e.preventDefault(); onRestart(); }}
+          onMouseDown={() => onRestart()}>RST</button>
+        <button style={btnStyle}
+          onTouchStart={(e) => { e.preventDefault(); onDirection('right'); }}
+          onMouseDown={() => onDirection('right')}>►</button>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button style={btnStyle}
+          onTouchStart={(e) => { e.preventDefault(); onDirection('down'); }}
+          onMouseDown={() => onDirection('down')}>▼</button>
+      </div>
+      <div style={{ fontSize: '11px', color: '#006600', marginTop: '4px' }}>TAP TO CONTROL · RST = RESTART</div>
+    </div>
+  );
+}
+
 function SnakeGame() {
   const canvasRef = useRef(null);
+  const gameState = useRef({
+    snake: [{ x: 10, y: 10 }],
+    dir: { x: 1, y: 0 },
+    food: { x: 15, y: 15 },
+    score: 0,
+    running: true,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -29,78 +82,93 @@ function SnakeGame() {
     const size = 20;
     const cols = canvas.width / size;
     const rows = canvas.height / size;
-
-    let snake = [{ x: 10, y: 10 }];
-    let dir = { x: 1, y: 0 };
-    let food = { x: 15, y: 15 };
-    let score = 0;
-    let running = true;
-    let interval;
+    const gs = gameState.current;
 
     const placeFood = () => {
-      food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
+      gs.food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
     };
 
     const draw = () => {
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#00ff00';
-      snake.forEach(s => ctx.fillRect(s.x * size, s.y * size, size - 2, size - 2));
+      gs.snake.forEach(s => ctx.fillRect(s.x * size, s.y * size, size - 2, size - 2));
       ctx.fillStyle = '#ffff00';
-      ctx.fillRect(food.x * size, food.y * size, size - 2, size - 2);
+      ctx.fillRect(gs.food.x * size, gs.food.y * size, size - 2, size - 2);
       ctx.fillStyle = '#006600';
       ctx.font = '14px Courier New';
-      ctx.fillText(`SCORE: ${score}`, 8, 20);
+      ctx.fillText(`SCORE: ${gs.score}`, 8, 20);
+    };
+
+    const reset = () => {
+      gs.snake = [{ x: 10, y: 10 }];
+      gs.dir = { x: 1, y: 0 };
+      gs.score = 0;
+      gs.running = true;
+      placeFood();
     };
 
     const update = () => {
-      if (!running) return;
-      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-      if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || snake.some(s => s.x === head.x && s.y === head.y)) {
-        running = false;
+      if (!gs.running) return;
+      const head = { x: gs.snake[0].x + gs.dir.x, y: gs.snake[0].y + gs.dir.y };
+      if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || gs.snake.some(s => s.x === head.x && s.y === head.y)) {
+        gs.running = false;
         ctx.fillStyle = '#ff4444';
         ctx.font = 'bold 24px Courier New';
         ctx.fillText('GAME OVER', canvas.width / 2 - 70, canvas.height / 2);
         ctx.font = '14px Courier New';
-        ctx.fillText(`FINAL SCORE: ${score}`, canvas.width / 2 - 60, canvas.height / 2 + 30);
+        ctx.fillText(`FINAL SCORE: ${gs.score}`, canvas.width / 2 - 60, canvas.height / 2 + 30);
         ctx.fillText('PRESS R TO RESTART', canvas.width / 2 - 80, canvas.height / 2 + 56);
         clearInterval(interval);
         return;
       }
-      snake.unshift(head);
-      if (head.x === food.x && head.y === food.y) { score++; placeFood(); }
-      else snake.pop();
+      gs.snake.unshift(head);
+      if (head.x === gs.food.x && head.y === gs.food.y) { gs.score++; placeFood(); }
+      else gs.snake.pop();
       draw();
     };
 
     const handleKey = (e) => {
-      if (e.key === 'ArrowUp' && dir.y === 0) dir = { x: 0, y: -1 };
-      if (e.key === 'ArrowDown' && dir.y === 0) dir = { x: 0, y: 1 };
-      if (e.key === 'ArrowLeft' && dir.x === 0) dir = { x: -1, y: 0 };
-      if (e.key === 'ArrowRight' && dir.x === 0) dir = { x: 1, y: 0 };
-      if (e.key === 'r' || e.key === 'R') {
-        clearInterval(interval);
-        snake = [{ x: 10, y: 10 }]; dir = { x: 1, y: 0 }; score = 0; running = true;
-        placeFood(); interval = setInterval(update, 120);
-      }
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+  }
+      if (e.key === 'ArrowUp' && gs.dir.y === 0) gs.dir = { x: 0, y: -1 };
+      if (e.key === 'ArrowDown' && gs.dir.y === 0) gs.dir = { x: 0, y: 1 };
+      if (e.key === 'ArrowLeft' && gs.dir.x === 0) gs.dir = { x: -1, y: 0 };
+      if (e.key === 'ArrowRight' && gs.dir.x === 0) gs.dir = { x: 1, y: 0 };
+      if (e.key === 'r' || e.key === 'R') { clearInterval(interval); reset(); interval = setInterval(update, 120); }
     };
 
     window.addEventListener('keydown', handleKey);
-    interval = setInterval(update, 120);
+    let interval = setInterval(update, 120);
     draw();
+
+    canvas._snakeControl = (dir) => {
+      if (dir === 'up' && gs.dir.y === 0) gs.dir = { x: 0, y: -1 };
+      if (dir === 'down' && gs.dir.y === 0) gs.dir = { x: 0, y: 1 };
+      if (dir === 'left' && gs.dir.x === 0) gs.dir = { x: -1, y: 0 };
+      if (dir === 'right' && gs.dir.x === 0) gs.dir = { x: 1, y: 0 };
+    };
+    canvas._snakeRestart = () => { clearInterval(interval); reset(); interval = setInterval(update, 120); };
+
     return () => { clearInterval(interval); window.removeEventListener('keydown', handleKey); };
   }, []);
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <canvas ref={canvasRef} width={400} height={400} style={{ border: '2px solid #00ff00', display: 'block', margin: '0 auto' }} />
-      <div style={{ fontSize: '12px', color: '#006600', marginTop: '8px' }}>ARROW KEYS TO MOVE · R TO RESTART</div>
+      <canvas ref={canvasRef} width={400} height={400} style={{ border: '2px solid #00ff00', display: 'block', margin: '0 auto', maxWidth: '100%' }} />
+      <TouchControls
+        onDirection={(dir) => canvasRef.current?._snakeControl(dir)}
+        onRestart={() => canvasRef.current?._snakeRestart()}
+      />
     </div>
   );
 }
 
 function BreakoutGame() {
   const canvasRef = useRef(null);
+  const keysRef = useRef({});
+  const paddleRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,6 +176,7 @@ function BreakoutGame() {
     const W = canvas.width, H = canvas.height;
 
     let paddle = { x: W / 2 - 40, y: H - 30, w: 80, h: 10 };
+    paddleRef.current = paddle;
     let ball = { x: W / 2, y: H - 50, dx: 3, dy: -3, r: 8 };
     let score = 0, running = true, animId;
 
@@ -119,8 +188,12 @@ function BreakoutGame() {
       }))
     );
 
-    const keys = {};
-    const handleKey = (e) => { keys[e.key] = e.type === 'keydown'; };
+    const handleKey = (e) => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+  }
+  keysRef.current[e.key] = e.type === 'keydown';
+};
     window.addEventListener('keydown', handleKey);
     window.addEventListener('keyup', handleKey);
 
@@ -134,8 +207,8 @@ function BreakoutGame() {
 
     const update = () => {
       if (!running) return;
-      if (keys['ArrowLeft'] && paddle.x > 0) paddle.x -= 6;
-      if (keys['ArrowRight'] && paddle.x + paddle.w < W) paddle.x += 6;
+      if (keysRef.current['ArrowLeft'] && paddle.x > 0) paddle.x -= 6;
+      if (keysRef.current['ArrowRight'] && paddle.x + paddle.w < W) paddle.x += 6;
       ball.x += ball.dx; ball.y += ball.dy;
       if (ball.x - ball.r < 0 || ball.x + ball.r > W) ball.dx *= -1;
       if (ball.y - ball.r < 0) ball.dy *= -1;
@@ -153,14 +226,37 @@ function BreakoutGame() {
       draw(); animId = requestAnimationFrame(update);
     };
 
+    canvas._breakoutControl = (dir) => {
+      if (dir === 'left') keysRef.current['ArrowLeft'] = true;
+      if (dir === 'right') keysRef.current['ArrowRight'] = true;
+    };
+    canvas._breakoutRelease = (dir) => {
+      if (dir === 'left') keysRef.current['ArrowLeft'] = false;
+      if (dir === 'right') keysRef.current['ArrowRight'] = false;
+    };
+
     draw(); animId = requestAnimationFrame(update);
     return () => { cancelAnimationFrame(animId); window.removeEventListener('keydown', handleKey); window.removeEventListener('keyup', handleKey); };
   }, []);
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <canvas ref={canvasRef} width={400} height={400} style={{ border: '2px solid #00ff00', display: 'block', margin: '0 auto' }} />
-      <div style={{ fontSize: '12px', color: '#006600', marginTop: '8px' }}>ARROW KEYS TO MOVE PADDLE · R TO RESTART</div>
+      <canvas ref={canvasRef} width={400} height={400} style={{ border: '2px solid #00ff00', display: 'block', margin: '0 auto', maxWidth: '100%' }} />
+      <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '20px' }}>
+          <button style={{ ...btnStyle, width: '100px' }}
+            onTouchStart={(e) => { e.preventDefault(); canvasRef.current?._breakoutControl('left'); }}
+            onTouchEnd={(e) => { e.preventDefault(); canvasRef.current?._breakoutRelease('left'); }}
+            onMouseDown={() => canvasRef.current?._breakoutControl('left')}
+            onMouseUp={() => canvasRef.current?._breakoutRelease('left')}>◄ LEFT</button>
+          <button style={{ ...btnStyle, width: '100px' }}
+            onTouchStart={(e) => { e.preventDefault(); canvasRef.current?._breakoutControl('right'); }}
+            onTouchEnd={(e) => { e.preventDefault(); canvasRef.current?._breakoutRelease('right'); }}
+            onMouseDown={() => canvasRef.current?._breakoutControl('right')}
+            onMouseUp={() => canvasRef.current?._breakoutRelease('right')}>RIGHT ►</button>
+        </div>
+        <div style={{ fontSize: '11px', color: '#006600', marginTop: '4px' }}>HOLD TO MOVE PADDLE</div>
+      </div>
     </div>
   );
 }
@@ -170,11 +266,11 @@ export default function GamesPage() {
 
   return (
     <main style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', fontFamily: '"Courier New", Courier, monospace', color: '#00ff00' }}>
-      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <a href="/" style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', textDecoration: 'none' }}>
           &#9608; GAMER'S CONCLAVE
         </a>
-        <div style={{ display: 'flex', gap: '20px', fontSize: '14px' }}>
+        <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap' }}>
           <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
           <a href="/games" style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
           <a href="/doom" style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
@@ -187,12 +283,12 @@ export default function GamesPage() {
       <div style={{ padding: '40px 20px 20px', borderBottom: '1px solid #003300' }}>
         <div style={{ fontSize: '11px', color: '#006600' }}>&#9608;&#9608; ARCADE &#9608;&#9608;</div>
         <h1 style={{ fontSize: '32px', margin: '5px 0 10px', letterSpacing: '3px' }}>FLASH GAMES</h1>
-        <p style={{ fontSize: '13px', color: '#009900', margin: 0 }}>Classic games. Arrow keys to play. No installs needed.</p>
+        <p style={{ fontSize: '13px', color: '#009900', margin: 0 }}>Classic games. Arrow keys or tap controls to play. No installs needed.</p>
       </div>
 
       {activeGame && (
         <div style={{ padding: '30px 20px', borderBottom: '1px solid #003300' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '2px' }}>&gt; NOW PLAYING: {activeGame.title}</div>
             <button onClick={() => setActiveGame(null)} style={{ backgroundColor: '#111', color: '#ff4444', border: '1px solid #ff4444', padding: '6px 16px', cursor: 'pointer', fontFamily: '"Courier New", monospace', fontSize: '12px' }}>[ EXIT GAME ]</button>
           </div>
@@ -204,39 +300,17 @@ export default function GamesPage() {
       <div style={{ padding: '30px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
         {GAMES.map(game => (
           <div key={game.id} style={{ border: '1px solid #00ff00', backgroundColor: '#0d0d0d', padding: '20px' }}>
-
-            {/* Retro ASCII-style preview panel — no external images needed */}
-            <div style={{
-              width: '100%',
-              height: '140px',
-              marginBottom: '12px',
-              border: '1px solid #003300',
-              backgroundColor: '#050505',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              overflow: 'hidden',
-            }}>
+            <div style={{ width: '100%', height: '140px', marginBottom: '12px', border: '1px solid #003300', backgroundColor: '#050505', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', overflow: 'hidden' }}>
               <div style={{ fontSize: '32px', lineHeight: 1 }}>{game.icon}</div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                 {game.preview.map((row, i) => (
-                  <div key={i} style={{ fontSize: '11px', color: '#004400', letterSpacing: '2px', fontFamily: '"Courier New", monospace' }}>
-                    {row}
-                  </div>
+                  <div key={i} style={{ fontSize: '11px', color: '#004400', letterSpacing: '2px', fontFamily: '"Courier New", monospace' }}>{row}</div>
                 ))}
               </div>
             </div>
-
             <div style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '2px', marginBottom: '8px' }}>&gt; {game.title}</div>
             <div style={{ fontSize: '13px', color: '#009900', marginBottom: '16px' }}>{game.description}</div>
-            <button
-              onClick={() => setActiveGame(game)}
-              style={{ backgroundColor: '#00ff00', color: '#000', border: 'none', padding: '8px 20px', fontSize: '13px', fontFamily: '"Courier New", monospace', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '2px' }}
-            >
-              [ PLAY ]
-            </button>
+            <button onClick={() => setActiveGame(game)} style={{ backgroundColor: '#00ff00', color: '#000', border: 'none', padding: '8px 20px', fontSize: '13px', fontFamily: '"Courier New", monospace', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '2px' }}>[ PLAY ]</button>
           </div>
         ))}
       </div>
