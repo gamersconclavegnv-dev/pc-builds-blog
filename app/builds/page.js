@@ -36,10 +36,9 @@ export default function BuildsPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
   const [form, setForm] = useState({
-    title: '', author: '', cpu: '', gpu: '', ram: '', storage: '', description: '', partLink: '', photoPreview: null,
+    title: '', author: '', cpu: '', gpu: '', ram: '', storage: '', psu: '', case: '', description: '', partLink: '', photoPreview: null,
   });
 
-  // Load builds from Supabase on page load
   useEffect(() => {
     fetchBuilds();
   }, []);
@@ -64,7 +63,6 @@ export default function BuildsPage() {
     const key = `${buildId}-${emoji}`;
     if (userReactions[key]) return;
 
-    // Optimistic UI update
     setUserReactions(prev => ({ ...prev, [key]: true }));
     setBuilds(prev => prev.map(build => {
       if (build.id !== buildId) return build;
@@ -72,7 +70,6 @@ export default function BuildsPage() {
       return { ...build, reactions: { ...current, [emoji]: (current[emoji] || 0) + 1 } };
     }));
 
-    // Get current reactions from DB and update
     const { data: current } = await supabase
       .from('builds')
       .select('reactions')
@@ -112,6 +109,8 @@ export default function BuildsPage() {
         gpu: form.gpu,
         ram: form.ram,
         storage: form.storage,
+        psu: form.psu,
+        case: form.case,
         partLink: form.partLink,
         photo: form.photoPreview,
       }),
@@ -127,11 +126,11 @@ export default function BuildsPage() {
       return;
     }
 
-    setForm({ title: '', author: '', cpu: '', gpu: '', ram: '', storage: '', description: '', partLink: '', photoPreview: null });
+    setForm({ title: '', author: '', cpu: '', gpu: '', ram: '', storage: '', psu: '', case: '', description: '', partLink: '', photoPreview: null });
     setShowForm(false);
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 4000);
-    fetchBuilds(); // Refresh list
+    fetchBuilds();
   };
 
   const filteredBuilds = builds
@@ -230,8 +229,14 @@ export default function BuildsPage() {
           <label style={labelStyle}>STORAGE</label>
           <input style={inputStyle} value={form.storage} onChange={e => setForm(p => ({ ...p, storage: e.target.value }))} placeholder="e.g. 1TB NVMe SSD" />
 
-          <label style={labelStyle}>DESCRIPTION</label>
-          <textarea style={{ ...inputStyle, height: '80px', resize: 'vertical' }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Tell us about your build..." />
+          <label style={labelStyle}>PSU</label>
+          <input style={inputStyle} value={form.psu} onChange={e => setForm(p => ({ ...p, psu: e.target.value }))} placeholder="e.g. Corsair RM850x 850W" />
+
+          <label style={labelStyle}>CASE</label>
+          <input style={inputStyle} value={form.case} onChange={e => setForm(p => ({ ...p, case: e.target.value }))} placeholder="e.g. Lian Li O11 Dynamic" />
+
+          <label style={labelStyle}>PERIPHERALS / WHAT MAKES YOUR BUILD SPECIAL</label>
+          <textarea style={{ ...inputStyle, height: '80px', resize: 'vertical' }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Custom water loop, RGB setup, ultrawide monitor, mechanical keyboard..." />
 
           <label style={labelStyle}>PARTS LIST URL (PCPartPicker, etc.)</label>
           <input style={inputStyle} value={form.partLink} onChange={e => setForm(p => ({ ...p, partLink: e.target.value }))} placeholder="https://pcpartpicker.com/list/..." />
@@ -289,6 +294,8 @@ export default function BuildsPage() {
                 {parts.gpu && <div>GPU: <span style={{ color: '#00ff00' }}>{parts.gpu}</span></div>}
                 {parts.ram && <div>RAM: <span style={{ color: '#00ff00' }}>{parts.ram}</span></div>}
                 {parts.storage && <div>STORAGE: <span style={{ color: '#00ff00' }}>{parts.storage}</span></div>}
+                {parts.psu && <div>PSU: <span style={{ color: '#00ff00' }}>{parts.psu}</span></div>}
+                {parts.case && <div>CASE: <span style={{ color: '#00ff00' }}>{parts.case}</span></div>}
               </div>
               {build.description && (
                 <div style={{ fontSize: '13px', color: '#009900', marginBottom: '14px', borderLeft: '2px solid #003300', paddingLeft: '10px' }}>{build.description}</div>
