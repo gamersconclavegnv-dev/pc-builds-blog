@@ -15,16 +15,19 @@ export default function Home() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px',
       }}>
         <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px' }}>
           &#9608; GAMER'S CONCLAVE
         </div>
-        <div style={{ display: 'flex', gap: '20px', fontSize: '14px' }}>
-          <a href="#" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
-          <a href="#" style={{ color: '#00ff00', textDecoration: 'none' }}>[ GAMES ]</a>
-          <a href="#" style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
-          <a href="#" style={{ color: '#00ff00', textDecoration: 'none' }}>[ IDEAS ]</a>
-          <a href="#" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
+        <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap' }}>
+          <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
+          <a href="/games" style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
+          <a href="/doom" style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
+          <a href="/vote" style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
+          <a href="/ideas" style={{ color: '#00ff00', textDecoration: 'none' }}>[ IDEAS ]</a>
+          <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
         </div>
       </nav>
 
@@ -38,7 +41,7 @@ export default function Home() {
           *** WELCOME TO THE INTERNET ***
         </div>
         <h1 style={{
-          fontSize: '48px',
+          fontSize: 'clamp(28px, 6vw, 48px)',
           fontWeight: 'bold',
           letterSpacing: '4px',
           margin: '0 0 10px 0',
@@ -49,19 +52,21 @@ export default function Home() {
         <div style={{ fontSize: '14px', color: '#009900', marginBottom: '30px' }}>
           // share your build. show your rig. join the community. //
         </div>
-        <button style={{
-          backgroundColor: '#00ff00',
-          color: '#000',
-          border: 'none',
-          padding: '12px 30px',
-          fontSize: '16px',
-          fontFamily: '"Courier New", monospace',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          letterSpacing: '2px',
-        }}>
-          [ POST YOUR BUILD ]
-        </button>
+        <a href="/builds" style={{ textDecoration: 'none' }}>
+          <button style={{
+            backgroundColor: '#00ff00',
+            color: '#000',
+            border: 'none',
+            padding: '12px 30px',
+            fontSize: '16px',
+            fontFamily: '"Courier New", monospace',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            letterSpacing: '2px',
+          }}>
+            [ POST YOUR BUILD ]
+          </button>
+        </a>
       </div>
 
       {/* PC of the Week */}
@@ -105,7 +110,7 @@ export default function Home() {
         color: '#006600',
         backgroundColor: '#111',
       }}>
-        <a href="#" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>
+        <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>
           [ DONATE ]
         </a>
         <span>GAMER'S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
