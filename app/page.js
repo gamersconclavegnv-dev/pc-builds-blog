@@ -1,31 +1,42 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
+  const [scrollImages, setScrollImages] = useState([]);
   const [recentBuilds, setRecentBuilds] = useState([]);
-  const [buildPhotos, setBuildPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBuilds = async () => {
       const { data, error } = await supabase
         .from('builds')
-        .select('*')
+        .select('id, title, author, created_at, parts, description')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (!error && data) {
-        setRecentBuilds(data.slice(0, 5));
-        const photos = data.filter(b => b.photo).map(b => ({ photo: b.photo, title: b.title, author: b.author }));
-        setBuildPhotos(photos);
+      if (!error && data?.length) {
+        setRecentBuilds(data.slice(0, 4));
+        const photos = [];
+        data.forEach(build => {
+          try {
+            const parts = build.parts ? JSON.parse(build.parts) : {};
+            if (parts.photos?.length) {
+              parts.photos.forEach(p => { if (p) photos.push(p); });
+            } else if (parts.photo) {
+              photos.push(parts.photo);
+            }
+          } catch (e) {}
+        });
+        if (photos.length >= 3) setScrollImages(photos);
       }
       setLoading(false);
     };
+
     fetchBuilds();
   }, []);
 
-  const loopPhotos = [...buildPhotos, ...buildPhotos];
+  const loopImages = [...scrollImages, ...scrollImages];
 
   return (
     <main style={{
@@ -35,6 +46,7 @@ export default function Home() {
       color: '#00ff00',
       padding: '0',
     }}>
+
       <style>{`
         @keyframes marquee {
           0%   { transform: translateX(0); }
@@ -43,11 +55,85 @@ export default function Home() {
         .marquee-track {
           display: flex;
           gap: 12px;
-          animation: marquee 35s linear infinite;
+          animation: marquee 50s linear infinite;
           width: max-content;
         }
         .marquee-track:hover {
           animation-play-state: paused;
+        }
+        @keyframes skelPulse {
+          0%, 100% { opacity: 0.15; }
+          50%       { opacity: 0.35; }
+        }
+        .skel-card {
+          flex-shrink: 0;
+          width: 280px;
+          height: 190px;
+          border: 1px solid #002200;
+          background: #0d0d0d;
+          position: relative;
+          overflow: hidden;
+          animation: skelPulse 1.6s ease-in-out infinite;
+        }
+        .skel-card::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0,255,0,0.04) 2px,
+            rgba(0,255,0,0.04) 4px
+          );
+        }
+        .skel-label {
+          position: absolute;
+          bottom: 10px;
+          left: 12px;
+          width: 60%;
+          height: 10px;
+          background: #003300;
+          border-radius: 2px;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .reel-fade-in {
+          animation: fadeIn 0.6s ease-in forwards;
+        }
+        .build-card {
+          border: 1px solid #003300;
+          background: #0d0d0d;
+          padding: 14px 16px;
+          display: flex;
+          gap: 14px;
+          align-items: center;
+          cursor: pointer;
+          transition: border-color 0.2s;
+          text-decoration: none;
+        }
+        .build-card:hover { border-color: #00ff00; }
+        .skel-build {
+          border: 1px solid #002200;
+          background: #0d0d0d;
+          padding: 14px 16px;
+          display: flex;
+          gap: 14px;
+          align-items: center;
+          animation: skelPulse 1.6s ease-in-out infinite;
+        }
+        .skel-thumb {
+          width: 70px; height: 55px;
+          background: #003300;
+          flex-shrink: 0;
+        }
+        .skel-line {
+          height: 10px;
+          background: #003300;
+          border-radius: 2px;
+          margin-bottom: 6px;
         }
       `}</style>
 
@@ -63,7 +149,7 @@ export default function Home() {
         gap: '10px',
       }}>
         <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px' }}>
-          &#9608; GAMER'S CONCLAVE
+          &#9608; GAMER&apos;S CONCLAVE
         </div>
         <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap' }}>
           <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
@@ -91,7 +177,7 @@ export default function Home() {
           margin: '0 0 10px 0',
           textShadow: '0 0 10px #00ff00',
         }}>
-          GAMER'S CONCLAVE
+          GAMER&apos;S CONCLAVE
         </h1>
         <div style={{ fontSize: '14px', color: '#009900', marginBottom: '30px' }}>
           // share your build. show your rig. join the community. //
@@ -113,93 +199,78 @@ export default function Home() {
         </a>
       </div>
 
-      {/* Scrolling Reel */}
+      {/* SCROLL REEL */}
       <div style={{
         borderBottom: '1px solid #003300',
         borderTop: '1px solid #003300',
         backgroundColor: '#050505',
         overflow: 'hidden',
         padding: '20px 0',
-        minHeight: '130px',
       }}>
         <div style={{ fontSize: '11px', color: '#004400', textAlign: 'center', marginBottom: '14px', letterSpacing: '2px' }}>
           &#9608;&#9608; COMMUNITY RIGS — HOVER TO PAUSE &#9608;&#9608;
         </div>
+        <div style={{ overflow: 'hidden', width: '100%' }}>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', color: '#003300', fontSize: '13px', padding: '20px' }}>
-            &gt; LOADING REEL...
-          </div>
-        ) : buildPhotos.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#003300', fontSize: '13px', padding: '20px' }}>
-            &gt; REEL EMPTY — POST YOUR BUILD TO APPEAR HERE
-          </div>
-        ) : (
-          <div style={{ overflow: 'hidden', width: '100%' }}>
-            <div className="marquee-track">
-              {loopPhotos.map((item, i) => (
-                <a key={i} href="/builds" style={{ textDecoration: 'none' }}>
-                  <div style={{
-                    flexShrink: 0,
-                    width: '260px',
-                    height: '175px',
-                    border: '1px solid #002200',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    cursor: 'pointer',
-                  }}>
-                    <img
-                      src={item.photo}
-                      alt={item.title}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        display: 'block',
-                        filter: 'brightness(0.88)',
-                      }}
-                      onError={e => { e.currentTarget.parentElement.style.display = 'none'; }}
-                    />
-                    {/* Scanlines */}
-                    <div style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                      pointerEvents: 'none',
-                      backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
-                    }} />
-                    {/* Label */}
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      backgroundColor: 'rgba(0,0,0,0.75)',
-                      padding: '4px 8px',
-                      fontSize: '10px',
-                      color: '#00ff00',
-                      letterSpacing: '1px',
-                    }}>
-                      {item.title} — {item.author}
-                    </div>
-                  </div>
-                </a>
+          {/* SKELETON — shown while loading */}
+          {loading && (
+            <div style={{ display: 'flex', gap: '12px', padding: '0 12px' }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="skel-card" style={{ animationDelay: `${i * 0.15}s` }}>
+                  <div className="skel-label" />
+                </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* REAL PHOTOS — fade in after load */}
+          {!loading && scrollImages.length > 0 && (
+            <div className="marquee-track reel-fade-in">
+              {loopImages.map((src, i) => (
+                <div key={i} style={{
+                  flexShrink: 0,
+                  width: '280px',
+                  height: '190px',
+                  border: '1px solid #002200',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}>
+                  <img
+                    src={src}
+                    alt="community build"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                      filter: 'brightness(0.88)',
+                    }}
+                    onError={e => { e.currentTarget.parentElement.style.display = 'none'; }}
+                  />
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    pointerEvents: 'none',
+                    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px)',
+                  }} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* No photos yet */}
+          {!loading && scrollImages.length === 0 && (
+            <div style={{ textAlign: 'center', color: '#004400', fontSize: '13px', padding: '40px', letterSpacing: '1px' }}>
+              &gt; NO BUILDS YET — BE THE FIRST TO POST YOUR RIG_
+            </div>
+          )}
+        </div>
       </div>
 
       {/* PC of the Week */}
       <div style={{ padding: '40px 20px', borderBottom: '1px solid #003300' }}>
         <div style={{ fontSize: '11px', color: '#006600' }}>&#9608;&#9608; FEATURED &#9608;&#9608;</div>
-        <h2 style={{ fontSize: '24px', margin: '5px 0 20px', letterSpacing: '2px' }}>
-          PC OF THE WEEK
-        </h2>
-        <div style={{
-          border: '1px solid #00ff00',
-          padding: '20px',
-          maxWidth: '500px',
-          backgroundColor: '#0d0d0d',
-        }}>
+        <h2 style={{ fontSize: '24px', margin: '5px 0 20px', letterSpacing: '2px' }}>PC OF THE WEEK</h2>
+        <div style={{ border: '1px solid #00ff00', padding: '20px', maxWidth: '500px', backgroundColor: '#0d0d0d' }}>
           <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
             &gt; SLOT EMPTY — BE THE FIRST!
           </div>
@@ -212,56 +283,62 @@ export default function Home() {
       {/* Recent Builds */}
       <div style={{ padding: '40px 20px' }}>
         <div style={{ fontSize: '11px', color: '#006600' }}>&#9608;&#9608; LATEST &#9608;&#9608;</div>
-        <h2 style={{ fontSize: '24px', margin: '5px 0 20px', letterSpacing: '2px' }}>
-          RECENT BUILDS
-        </h2>
-        {recentBuilds.length === 0 ? (
-          <div style={{ color: '#006600', fontSize: '14px' }}>
-            &gt; No builds yet. Be the first to post._
+        <h2 style={{ fontSize: '24px', margin: '5px 0 20px', letterSpacing: '2px' }}>RECENT BUILDS</h2>
+
+        {/* Skeleton builds */}
+        {loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="skel-build" style={{ animationDelay: `${i * 0.2}s` }}>
+                <div className="skel-thumb" />
+                <div style={{ flex: 1 }}>
+                  <div className="skel-line" style={{ width: '50%' }} />
+                  <div className="skel-line" style={{ width: '30%' }} />
+                  <div className="skel-line" style={{ width: '70%' }} />
+                </div>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '700px' }}>
-            {recentBuilds.map((build, i) => (
-              <a key={build.id} href="/builds" style={{ textDecoration: 'none' }}>
-                <div
-                  style={{
-                    border: '1px solid #003300',
-                    backgroundColor: '#0d0d0d',
-                    padding: '16px',
-                    display: 'flex',
-                    gap: '16px',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = '#00ff00'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = '#003300'}
-                >
-                  {build.photo && (
-                    <img src={build.photo} alt={build.title} style={{
-                      width: '80px',
-                      height: '60px',
-                      objectFit: 'cover',
-                      border: '1px solid #003300',
-                      flexShrink: 0,
+        )}
+
+        {/* Real builds */}
+        {!loading && recentBuilds.length === 0 && (
+          <div style={{ color: '#006600', fontSize: '14px' }}>&gt; No builds yet. Be the first to post._</div>
+        )}
+
+        {!loading && recentBuilds.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px', animation: 'fadeIn 0.6s ease-in' }}>
+            {recentBuilds.map(build => {
+              let parts = {};
+              try { parts = build.parts ? JSON.parse(build.parts) : {}; } catch (e) {}
+              const photo = parts.photos?.[0] || parts.photo || null;
+              return (
+                <a key={build.id} href="/builds" className="build-card" style={{ textDecoration: 'none' }}>
+                  {photo && (
+                    <img src={photo} alt={build.title} style={{
+                      width: '70px', height: '55px', objectFit: 'cover',
+                      border: '1px solid #003300', flexShrink: 0,
                     }} />
                   )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#00ff00', letterSpacing: '1px' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '4px', color: '#00ff00' }}>
                       &gt; {build.title}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#006600', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: '#006600' }}>
                       by {build.author} · {new Date(build.created_at).toLocaleDateString()}
                     </div>
-                    {build.description && (
-                      <div style={{ fontSize: '12px', color: '#009900', marginTop: '6px' }}>
-                        {build.description.slice(0, 80)}{build.description.length > 80 ? '...' : ''}
+                    {parts.cpu && (
+                      <div style={{ fontSize: '11px', color: '#009900', marginTop: '3px' }}>
+                        {parts.cpu}{parts.gpu ? ` · ${parts.gpu}` : ''}
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#003300', flexShrink: 0 }}>#{i + 1}</div>
-                </div>
-              </a>
-            ))}
+                </a>
+              );
+            })}
+            <a href="/builds" style={{ fontSize: '12px', color: '#009900', textDecoration: 'none', letterSpacing: '1px' }}>
+              &gt; VIEW ALL BUILDS →
+            </a>
           </div>
         )}
       </div>
@@ -275,10 +352,8 @@ export default function Home() {
         color: '#006600',
         backgroundColor: '#111',
       }}>
-        <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>
-          [ DONATE ]
-        </a>
-        <span>GAMER'S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
       </footer>
     </main>
   );
