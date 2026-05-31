@@ -5,17 +5,7 @@ import { supabase } from '../lib/supabase';
 export default function Home() {
   const [recentBuilds, setRecentBuilds] = useState([]);
   const [buildPhotos, setBuildPhotos] = useState([]);
-
-  const fallbackImages = [
-    "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=500&q=70",
-    "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&q=70",
-    "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&q=70",
-    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=70",
-    "https://images.unsplash.com/photo-1593640495253-23196b27a87f?w=500&q=70",
-    "https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=500&q=70",
-    "https://images.unsplash.com/photo-1547394765-185e1e68f34e?w=500&q=70",
-    "https://images.unsplash.com/photo-1603481546238-487240415921?w=500&q=70",
-  ];
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBuilds = async () => {
@@ -27,18 +17,15 @@ export default function Home() {
 
       if (!error && data) {
         setRecentBuilds(data.slice(0, 5));
-        const photos = data
-          .filter(b => b.photo)
-          .map(b => b.photo);
-        setBuildPhotos(photos.length >= 3 ? photos : [...photos, ...fallbackImages].slice(0, 8));
-      } else {
-        setBuildPhotos(fallbackImages);
+        const photos = data.filter(b => b.photo).map(b => ({ photo: b.photo, title: b.title, author: b.author }));
+        setBuildPhotos(photos);
       }
+      setLoading(false);
     };
     fetchBuilds();
   }, []);
 
-  const loopImages = [...(buildPhotos.length ? buildPhotos : fallbackImages), ...(buildPhotos.length ? buildPhotos : fallbackImages)];
+  const loopPhotos = [...buildPhotos, ...buildPhotos];
 
   return (
     <main style={{
@@ -133,42 +120,72 @@ export default function Home() {
         backgroundColor: '#050505',
         overflow: 'hidden',
         padding: '20px 0',
+        minHeight: '130px',
       }}>
         <div style={{ fontSize: '11px', color: '#004400', textAlign: 'center', marginBottom: '14px', letterSpacing: '2px' }}>
-          &#9608;&#9608; HARDWARE REEL — HOVER TO PAUSE &#9608;&#9608;
+          &#9608;&#9608; COMMUNITY RIGS — HOVER TO PAUSE &#9608;&#9608;
         </div>
-        <div style={{ overflow: 'hidden', width: '100%' }}>
-          <div className="marquee-track">
-            {loopImages.map((src, i) => (
-              <div key={i} style={{
-                flexShrink: 0,
-                width: '260px',
-                height: '175px',
-                border: '1px solid #002200',
-                overflow: 'hidden',
-                position: 'relative',
-              }}>
-                <img
-                  src={src}
-                  alt="hardware"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                    filter: 'brightness(0.88)',
-                  }}
-                  onError={e => { e.currentTarget.parentElement.style.display = 'none'; }}
-                />
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                  pointerEvents: 'none',
-                  backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
-                }} />
-              </div>
-            ))}
+
+        {loading ? (
+          <div style={{ textAlign: 'center', color: '#003300', fontSize: '13px', padding: '20px' }}>
+            &gt; LOADING REEL...
           </div>
-        </div>
+        ) : buildPhotos.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#003300', fontSize: '13px', padding: '20px' }}>
+            &gt; REEL EMPTY — POST YOUR BUILD TO APPEAR HERE
+          </div>
+        ) : (
+          <div style={{ overflow: 'hidden', width: '100%' }}>
+            <div className="marquee-track">
+              {loopPhotos.map((item, i) => (
+                <a key={i} href="/builds" style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    flexShrink: 0,
+                    width: '260px',
+                    height: '175px',
+                    border: '1px solid #002200',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    cursor: 'pointer',
+                  }}>
+                    <img
+                      src={item.photo}
+                      alt={item.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
+                        filter: 'brightness(0.88)',
+                      }}
+                      onError={e => { e.currentTarget.parentElement.style.display = 'none'; }}
+                    />
+                    {/* Scanlines */}
+                    <div style={{
+                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                      pointerEvents: 'none',
+                      backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
+                    }} />
+                    {/* Label */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: 'rgba(0,0,0,0.75)',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      color: '#00ff00',
+                      letterSpacing: '1px',
+                    }}>
+                      {item.title} — {item.author}
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* PC of the Week */}
@@ -206,16 +223,16 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '700px' }}>
             {recentBuilds.map((build, i) => (
               <a key={build.id} href="/builds" style={{ textDecoration: 'none' }}>
-                <div style={{
-                  border: '1px solid #003300',
-                  backgroundColor: '#0d0d0d',
-                  padding: '16px',
-                  display: 'flex',
-                  gap: '16px',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.2s',
-                }}
+                <div
+                  style={{
+                    border: '1px solid #003300',
+                    backgroundColor: '#0d0d0d',
+                    padding: '16px',
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                  }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#00ff00'}
                   onMouseLeave={e => e.currentTarget.style.borderColor = '#003300'}
                 >
