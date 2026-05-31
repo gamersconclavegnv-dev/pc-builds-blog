@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useUser } from '@clerk/nextjs';
 
 const disclaimer = "⚠ COMMUNITY RULES: Please keep all posts PG. Violent posts or derogatory language will result in immediate post removal. Repeat offenders will be banned.";
 
@@ -26,7 +27,13 @@ const labelStyle = {
   marginTop: '12px',
 };
 
+const emptyForm = {
+  title: '', author: '', cpu: '', gpu: '', motherboard: '', ram: '',
+  storage: '', psu: '', case: '', description: '', partLink: '', photos: [],
+};
+
 export default function BuildsPage() {
+  const { user } = useUser();
   const [builds, setBuilds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userReactions, setUserReactions] = useState({});
@@ -34,14 +41,24 @@ export default function BuildsPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [search, setSearch] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [form, setForm] = useState({
-    title: '', author: '', cpu: '', gpu: '', ram: '', storage: '', psu: '', case: '', description: '', partLink: '', photoPreview: null,
-  });
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
+  const [expandedPhotos, setExpandedPhotos] = useState({});
+  const submitLockRef = useRef(false);
 
+  // Auto-fill author from Clerk user
   useEffect(() => {
-    fetchBuilds();
-  }, []);
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        author: prev.author || user.username || user.firstName || user.emailAddresses?.[0]?.emailAddress?.split('@')[0] || '',
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => { fetchBuilds(); }, []);
 
   const fetchBuilds = async () => {
     setLoading(true);
@@ -49,88 +66,149 @@ export default function BuildsPage() {
       .from('builds')
       .select('*')
       .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching builds:', error);
-      setError('Failed to load builds. Please refresh.');
-    } else {
-      setBuilds(data || []);
-    }
+    if (error) { console.error(error); setError('Failed to load builds. Please refresh.'); }
+    else setBuilds(data || []);
     setLoading(false);
   };
 
   const handleReaction = async (buildId, emoji) => {
     const key = `${buildId}-${emoji}`;
     if (userReactions[key]) return;
-
     setUserReactions(prev => ({ ...prev, [key]: true }));
     setBuilds(prev => prev.map(build => {
       if (build.id !== buildId) return build;
       const current = build.reactions || {};
       return { ...build, reactions: { ...current, [emoji]: (current[emoji] || 0) + 1 } };
     }));
-
-    const { data: current } = await supabase
-      .from('builds')
-      .select('reactions')
-      .eq('id', buildId)
-      .single();
-
-    const updatedReactions = {
-      ...(current?.reactions || {}),
-      [emoji]: ((current?.reactions?.[emoji]) || 0) + 1,
-    };
-
-    await supabase
-      .from('builds')
-      .update({ reactions: updatedReactions })
-      .eq('id', buildId);
+    const { data: current } = await supabase.from('builds').select('reactions').eq('id', buildId).single();
+    const updatedReactions = { ...(current?.reactions || {}), [emoji]: ((current?.reactions?.[emoji]) || 0) + 1 };
+    await supabase.from('builds').update({ reactions: updatedReactions }).eq('id', buildId);
   };
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setForm(prev => ({ ...prev, photoPreview: reader.result }));
-    reader.readAsDataURL(file);
+  // Multi-image handler — converts each file to base64 and appends
+  const handlePhotosChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const MAX = 5;
+    const remaining = MAX - form.photos.length;
+    if (remaining <= 0) { alert('Maximum 5 photos allowed.'); return; }
+    const toProcess = files.slice(0, remaining);
+    toProcess.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm(prev => ({ ...prev, photos: [...prev.photos, reader.result] }));
+      };
+      reader.readAsDataURL(file);
+    });
+    // reset input so same file can be re-selected after removal
+    e.target.value = '';
+  };
+
+  const removePhoto = (index) => {
+    setForm(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
+  };
+
+  const openEditForm = (build) => {
+    const parts = build.parts ? JSON.parse(build.parts) : {};
+    setForm({
+      title: build.title || '',
+      author: build.author || '',
+      cpu: parts.cpu || '',
+      gpu: parts.gpu || '',
+      motherboard: parts.motherboard || '',
+      ram: parts.ram || '',
+      storage: parts.storage || '',
+      psu: parts.psu || '',
+      case: parts.case || '',
+      description: build.description || '',
+      partLink: parts.partLink || '',
+      photos: parts.photos || (parts.photo ? [parts.photo] : []),
+    });
+    setEditingId(build.id);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({
+      ...emptyForm,
+      author: user?.username || user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || '',
+    });
   };
 
   const handleSubmit = async () => {
+    // Double-post prevention
+    if (submitLockRef.current || submitting) return;
     if (!form.title || !form.author || !form.cpu || !form.gpu) {
       alert('Please fill in at least: Build Name, Your Name, CPU, and GPU.');
       return;
     }
+    submitLockRef.current = true;
+    setSubmitting(true);
 
-    const newBuild = {
-      title: form.title.toUpperCase(),
-      author: form.author,
-      parts: JSON.stringify({
-        cpu: form.cpu,
-        gpu: form.gpu,
-        ram: form.ram,
-        storage: form.storage,
-        psu: form.psu,
-        case: form.case,
-        partLink: form.partLink,
-        photo: form.photoPreview,
-      }),
-      description: form.description,
-      reactions: { '🔥': 0, '💀': 0, '👾': 0, '⚡': 0, '🖥️': 0 },
-    };
+    const partsPayload = JSON.stringify({
+      cpu: form.cpu,
+      gpu: form.gpu,
+      motherboard: form.motherboard,
+      ram: form.ram,
+      storage: form.storage,
+      psu: form.psu,
+      case: form.case,
+      partLink: form.partLink,
+      photos: form.photos,
+    });
 
-    const { error } = await supabase.from('builds').insert([newBuild]);
+    try {
+      if (editingId) {
+        // UPDATE existing build
+        const { error } = await supabase.from('builds').update({
+          title: form.title.toUpperCase(),
+          author: form.author,
+          parts: partsPayload,
+          description: form.description,
+        }).eq('id', editingId);
+        if (error) throw error;
+      } else {
+        // INSERT new build
+        const { error } = await supabase.from('builds').insert([{
+          title: form.title.toUpperCase(),
+          author: form.author,
+          parts: partsPayload,
+          description: form.description,
+          reactions: { '🔥': 0, '💀': 0, '👾': 0, '⚡': 0, '🖥️': 0 },
+          user_id: user?.id || null,
+        }]);
+        if (error) throw error;
+      }
 
-    if (error) {
-      console.error('Error posting build:', error);
-      alert('Failed to post build. Please try again.');
-      return;
+      cancelForm();
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 4000);
+      await fetchBuilds();
+    } catch (err) {
+      console.error('Error saving build:', err);
+      alert('Failed to save build. Please try again.');
+    } finally {
+      submitLockRef.current = false;
+      setSubmitting(false);
     }
+  };
 
-    setForm({ title: '', author: '', cpu: '', gpu: '', ram: '', storage: '', psu: '', case: '', description: '', partLink: '', photoPreview: null });
-    setShowForm(false);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
-    fetchBuilds();
+  const handleDelete = async (buildId) => {
+    if (!confirm('Delete this build? This cannot be undone.')) return;
+    const { error } = await supabase.from('builds').delete().eq('id', buildId);
+    if (error) { alert('Failed to delete. Try again.'); return; }
+    setBuilds(prev => prev.filter(b => b.id !== buildId));
+  };
+
+  const isOwner = (build) => {
+    if (!user) return false;
+    // Match by clerk user_id stored on build, or fall back to author name match
+    if (build.user_id && build.user_id === user.id) return true;
+    const myName = user.username || user.firstName || user.emailAddresses?.[0]?.emailAddress?.split('@')[0] || '';
+    return build.author === myName;
   };
 
   const filteredBuilds = builds
@@ -142,7 +220,8 @@ export default function BuildsPage() {
         b.author?.toLowerCase().includes(q) ||
         b.description?.toLowerCase().includes(q) ||
         parts.cpu?.toLowerCase().includes(q) ||
-        parts.gpu?.toLowerCase().includes(q)
+        parts.gpu?.toLowerCase().includes(q) ||
+        parts.motherboard?.toLowerCase().includes(q)
       );
     })
     .sort((a, b) => {
@@ -181,7 +260,7 @@ export default function BuildsPage() {
       {/* SUCCESS */}
       {submitted && (
         <div style={{ backgroundColor: '#003300', border: '1px solid #00ff00', color: '#00ff00', padding: '12px 20px', fontSize: '13px', textAlign: 'center' }}>
-          ✓ BUILD POSTED SUCCESSFULLY! WELCOME TO THE CONCLAVE.
+          ✓ BUILD {editingId ? 'UPDATED' : 'POSTED'} SUCCESSFULLY! WELCOME TO THE CONCLAVE.
         </div>
       )}
 
@@ -200,16 +279,18 @@ export default function BuildsPage() {
           Browse community PC builds. React with an emoji. No comments — keep it clean.
         </p>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { if (showForm && !editingId) { cancelForm(); } else { setShowForm(!showForm); setEditingId(null); } }}
           style={{ backgroundColor: '#00ff00', color: '#000', border: 'none', padding: '10px 24px', fontSize: '14px', fontFamily: '"Courier New", monospace', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '2px' }}>
           {showForm ? '[ - CANCEL ]' : '[ + POST YOUR BUILD ]'}
         </button>
       </div>
 
-      {/* POST FORM */}
+      {/* POST / EDIT FORM */}
       {showForm && (
-        <div style={{ margin: '20px', border: '1px solid #00ff00', padding: '24px', backgroundColor: '#0d0d0d', maxWidth: '600px' }}>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', letterSpacing: '2px' }}>&gt; SUBMIT YOUR BUILD</div>
+        <div style={{ margin: '20px', border: `1px solid ${editingId ? '#ffff00' : '#00ff00'}`, padding: '24px', backgroundColor: '#0d0d0d', maxWidth: '600px' }}>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', letterSpacing: '2px', color: editingId ? '#ffff00' : '#00ff00' }}>
+            &gt; {editingId ? 'EDIT YOUR BUILD' : 'SUBMIT YOUR BUILD'}
+          </div>
 
           <label style={labelStyle}>BUILD NAME *</label>
           <input style={inputStyle} value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. THE DESTROYER" />
@@ -222,6 +303,9 @@ export default function BuildsPage() {
 
           <label style={labelStyle}>GPU *</label>
           <input style={inputStyle} value={form.gpu} onChange={e => setForm(p => ({ ...p, gpu: e.target.value }))} placeholder="e.g. RTX 4070 Ti" />
+
+          <label style={labelStyle}>MOTHERBOARD</label>
+          <input style={inputStyle} value={form.motherboard} onChange={e => setForm(p => ({ ...p, motherboard: e.target.value }))} placeholder="e.g. ASUS ROG Strix Z790-E" />
 
           <label style={labelStyle}>RAM</label>
           <input style={inputStyle} value={form.ram} onChange={e => setForm(p => ({ ...p, ram: e.target.value }))} placeholder="e.g. 32GB DDR5" />
@@ -236,22 +320,57 @@ export default function BuildsPage() {
           <input style={inputStyle} value={form.case} onChange={e => setForm(p => ({ ...p, case: e.target.value }))} placeholder="e.g. Lian Li O11 Dynamic" />
 
           <label style={labelStyle}>PERIPHERALS / WHAT MAKES YOUR BUILD SPECIAL</label>
-          <textarea style={{ ...inputStyle, height: '80px', resize: 'vertical' }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Custom water loop, RGB setup, ultrawide monitor, mechanical keyboard..." />
+          <textarea style={{ ...inputStyle, height: '80px', resize: 'vertical' }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Custom water loop, RGB setup, ultrawide monitor..." />
 
           <label style={labelStyle}>PARTS LIST URL (PCPartPicker, etc.)</label>
           <input style={inputStyle} value={form.partLink} onChange={e => setForm(p => ({ ...p, partLink: e.target.value }))} placeholder="https://pcpartpicker.com/list/..." />
 
-          <label style={labelStyle}>PHOTO OF YOUR RIG</label>
-          <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ ...inputStyle, padding: '6px' }} />
-          {form.photoPreview && (
-            <img src={form.photoPreview} alt="preview" style={{ marginTop: '10px', maxWidth: '100%', maxHeight: '200px', border: '1px solid #003300' }} />
+          {/* MULTI-PHOTO UPLOAD */}
+          <label style={labelStyle}>PHOTOS OF YOUR RIG (UP TO 5)</label>
+          <input
+            type="file" accept="image/*" multiple
+            onChange={handlePhotosChange}
+            disabled={form.photos.length >= 5}
+            style={{ ...inputStyle, padding: '6px', opacity: form.photos.length >= 5 ? 0.4 : 1 }}
+          />
+          <div style={{ fontSize: '11px', color: '#004400', marginTop: '4px' }}>
+            {form.photos.length}/5 photos added — click to add more
+          </div>
+          {form.photos.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+              {form.photos.map((src, i) => (
+                <div key={i} style={{ position: 'relative' }}>
+                  <img src={src} alt={`preview-${i}`} style={{ width: '90px', height: '70px', objectFit: 'cover', border: '1px solid #003300' }} />
+                  <button
+                    onClick={() => removePhoto(i)}
+                    style={{ position: 'absolute', top: '2px', right: '2px', backgroundColor: '#ff4444', color: '#fff', border: 'none', width: '18px', height: '18px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
 
-          <button
-            onClick={handleSubmit}
-            style={{ marginTop: '20px', backgroundColor: '#00ff00', color: '#000', border: 'none', padding: '10px 24px', fontSize: '14px', fontFamily: '"Courier New", monospace', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '2px', width: '100%' }}>
-            [ SUBMIT BUILD ]
-          </button>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                backgroundColor: submitting ? '#006600' : (editingId ? '#ffff00' : '#00ff00'),
+                color: '#000', border: 'none', padding: '10px 24px', fontSize: '14px',
+                fontFamily: '"Courier New", monospace', fontWeight: 'bold',
+                cursor: submitting ? 'not-allowed' : 'pointer', letterSpacing: '2px',
+                opacity: submitting ? 0.7 : 1,
+              }}>
+              {submitting ? '[ POSTING... ]' : editingId ? '[ SAVE CHANGES ]' : '[ SUBMIT BUILD ]'}
+            </button>
+            <button
+              onClick={cancelForm}
+              style={{ backgroundColor: '#111', color: '#ff4444', border: '1px solid #ff4444', padding: '10px 18px', fontSize: '13px', fontFamily: '"Courier New", monospace', cursor: 'pointer' }}>
+              CANCEL
+            </button>
+          </div>
         </div>
       )}
 
@@ -259,7 +378,7 @@ export default function BuildsPage() {
       <div style={{ padding: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', borderBottom: '1px solid #003300' }}>
         <input
           style={{ ...inputStyle, maxWidth: '300px', marginTop: '0' }}
-          placeholder="Search builds, CPUs, GPUs..."
+          placeholder="Search builds, CPUs, GPUs, motherboards..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -272,39 +391,93 @@ export default function BuildsPage() {
 
       {/* BUILDS GRID */}
       <div style={{ padding: '30px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
-        {loading && (
-          <div style={{ color: '#006600', fontSize: '14px' }}>&gt; LOADING BUILDS FROM DATABASE..._</div>
-        )}
-        {!loading && filteredBuilds.length === 0 && (
-          <div style={{ color: '#006600', fontSize: '14px' }}>&gt; No builds found. Be the first to post!_</div>
-        )}
+        {loading && <div style={{ color: '#006600', fontSize: '14px' }}>&gt; LOADING BUILDS FROM DATABASE..._</div>}
+        {!loading && filteredBuilds.length === 0 && <div style={{ color: '#006600', fontSize: '14px' }}>&gt; No builds found. Be the first to post!_</div>}
+
         {filteredBuilds.map(build => {
           const parts = build.parts ? JSON.parse(build.parts) : {};
+          const photos = parts.photos || (parts.photo ? [parts.photo] : []);
+          const activePhoto = expandedPhotos[build.id] || 0;
+          const owner = isOwner(build);
+
           return (
             <div key={build.id} style={{ border: '1px solid #00ff00', backgroundColor: '#0d0d0d', padding: '20px' }}>
-              {parts.photo && (
-                <img src={parts.photo} alt={build.title} style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', marginBottom: '14px', border: '1px solid #003300' }} />
+
+              {/* PHOTO GALLERY */}
+              {photos.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <img
+                    src={photos[activePhoto]}
+                    alt={build.title}
+                    style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', border: '1px solid #003300', display: 'block' }}
+                  />
+                  {photos.length > 1 && (
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                      {photos.map((src, i) => (
+                        <img
+                          key={i}
+                          src={src}
+                          alt={`thumb-${i}`}
+                          onClick={() => setExpandedPhotos(prev => ({ ...prev, [build.id]: i }))}
+                          style={{
+                            width: '48px', height: '36px', objectFit: 'cover', cursor: 'pointer',
+                            border: `1px solid ${activePhoto === i ? '#00ff00' : '#003300'}`,
+                            opacity: activePhoto === i ? 1 : 0.6,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
-              <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '2px', marginBottom: '4px' }}>&gt; {build.title}</div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '2px' }}>&gt; {build.title}</div>
+                {/* EDIT / DELETE — only for owner */}
+                {owner && (
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '10px' }}>
+                    <button
+                      onClick={() => openEditForm(build)}
+                      style={{ backgroundColor: '#111', color: '#ffff00', border: '1px solid #666600', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: '"Courier New", monospace' }}>
+                      EDIT
+                    </button>
+                    <button
+                      onClick={() => handleDelete(build.id)}
+                      style={{ backgroundColor: '#111', color: '#ff4444', border: '1px solid #ff4444', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontFamily: '"Courier New", monospace' }}>
+                      DEL
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div style={{ fontSize: '11px', color: '#006600', marginBottom: '14px' }}>
                 posted by {build.author} · {new Date(build.created_at).toLocaleDateString()}
               </div>
+
               <div style={{ fontSize: '12px', color: '#009900', marginBottom: '14px', lineHeight: '1.8' }}>
                 {parts.cpu && <div>CPU: <span style={{ color: '#00ff00' }}>{parts.cpu}</span></div>}
                 {parts.gpu && <div>GPU: <span style={{ color: '#00ff00' }}>{parts.gpu}</span></div>}
+                {parts.motherboard && <div>MOBO: <span style={{ color: '#00ff00' }}>{parts.motherboard}</span></div>}
                 {parts.ram && <div>RAM: <span style={{ color: '#00ff00' }}>{parts.ram}</span></div>}
                 {parts.storage && <div>STORAGE: <span style={{ color: '#00ff00' }}>{parts.storage}</span></div>}
                 {parts.psu && <div>PSU: <span style={{ color: '#00ff00' }}>{parts.psu}</span></div>}
                 {parts.case && <div>CASE: <span style={{ color: '#00ff00' }}>{parts.case}</span></div>}
               </div>
+
               {build.description && (
-                <div style={{ fontSize: '13px', color: '#009900', marginBottom: '14px', borderLeft: '2px solid #003300', paddingLeft: '10px' }}>{build.description}</div>
+                <div style={{ fontSize: '13px', color: '#009900', marginBottom: '14px', borderLeft: '2px solid #003300', paddingLeft: '10px' }}>
+                  {build.description}
+                </div>
               )}
+
               {parts.partLink && (
-                <a href={parts.partLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', fontSize: '12px', color: '#ffff00', textDecoration: 'none', marginBottom: '16px', border: '1px solid #666600', padding: '4px 10px' }}>
+                <a href={parts.partLink} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-block', fontSize: '12px', color: '#ffff00', textDecoration: 'none', marginBottom: '16px', border: '1px solid #666600', padding: '4px 10px' }}>
                   [ VIEW PARTS LIST ]
                 </a>
               )}
+
+              {/* REACTIONS */}
               <div style={{ borderTop: '1px solid #003300', paddingTop: '12px' }}>
                 <div style={{ fontSize: '11px', color: '#006600', marginBottom: '8px' }}>REACT:</div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
