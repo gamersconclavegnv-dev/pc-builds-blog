@@ -560,7 +560,7 @@ useEffect(() => {
       {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px 0', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT FOR PASSION, NOT PROFIT</span>
       </footer>
     </main>
   );

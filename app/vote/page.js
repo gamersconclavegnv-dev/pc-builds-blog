@@ -72,13 +72,13 @@ export default function VotePage() {
 
         {/* HEADER */}
         <div style={{ fontSize: '11px', color: '#006600', letterSpacing: '4px', marginBottom: '10px' }}>
-          &#9608;&#9608; COMING SOON &#9608;&#9608;
+          &#9608;&#9608; VOTE PAGE COMING SOON &#9608;&#9608;
         </div>
         <h1 style={{ fontSize: 'clamp(24px, 4vw, 48px)', fontWeight: 'bold', letterSpacing: '4px', margin: '0 0 16px', textShadow: '0 0 10px #00ff00' }}>
           VOTE PAGE
         </h1>
         <div style={{ fontSize: '16px', color: '#009900', marginBottom: '40px', maxWidth: '480px', lineHeight: '1.7' }}>
-          // PC of the Week · Month · Year voting is under construction //<br />
+          // UNDER CONSTRUCTION //<br />
           <span style={{ fontSize: '13px', color: '#006600' }}>
            
           </span>
@@ -87,7 +87,7 @@ export default function VotePage() {
         {/* FAKE PROGRESS BAR */}
         <div style={{ width: '100%', maxWidth: '440px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#006600', marginBottom: '6px' }}>
-            <span>VOTE PAGE PROGRESS</span>
+            <span>VOTE PAGE LOADING.....</span>
             <span>72%</span>
           </div>
           <div style={{ backgroundColor: '#0d0d0d', border: '1px solid #003300', height: '18px', overflow: 'hidden' }}>
@@ -118,7 +118,7 @@ export default function VotePage() {
       {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT FOR PASSION, NOT PROFIT</span>
       </footer>
 
     </main>

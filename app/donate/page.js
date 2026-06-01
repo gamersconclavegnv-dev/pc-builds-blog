@@ -33,11 +33,11 @@ export default function DonatePage() {
       {/* HEADER */}
       <div style={{ padding: '40px 20px 30px', borderBottom: '1px solid #003300', textAlign: 'center' }}>
         <div style={{ fontSize: '11px', color: '#006600', letterSpacing: '4px', marginBottom: '10px' }}>
-          &#9608;&#9608; SUPPORT THE SITE &#9608;&#9608;
+         
         </div>
-        <h1 style={{ fontSize: '32px', margin: '5px 0 10px', letterSpacing: '3px' }}>DONATE</h1>
+        <h1 style={{ fontSize: '32px', margin: '5px 0 10px', letterSpacing: '3px' }}>|| SUPPORT GAMER'S CONCLAVE ||</h1>
         <p style={{ fontSize: '13px', color: '#009900', margin: 0 }}>
-          Keep Gamer&apos;s Conclave ad-free, alive, and growing.
+          
         </p>
       </div>
 
@@ -47,7 +47,10 @@ export default function DonatePage() {
         {/* CAT THANK YOU BOX */}
         <div style={{ border: '2px solid #00ff00', backgroundColor: '#0d0d0d', padding: '30px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
           <div style={{ fontSize: '11px', color: '#006600', letterSpacing: '3px', marginBottom: '16px' }}>
-            &#9608; A MESSAGE FROM GAMER&apos;S CONCLAVE &#9608;
+          
+          </div>
+          <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '3px', color: '#ffff00', marginBottom: '12px' }}>
+            THANK YOU FOR YOUR PATRONAGE!
           </div>
           <pre style={{ color: '#00ff00', fontSize: '13px', lineHeight: '1.4', margin: '0 auto 20px', display: 'inline-block', textAlign: 'left', textShadow: '0 0 6px #00ff00' }}>{`
    /\\_____/\\
@@ -59,13 +62,12 @@ export default function DonatePage() {
   
   THANK YOU!!!`}
           </pre>
-          <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '3px', color: '#ffff00', marginBottom: '12px' }}>
-            THANK YOU FOR YOUR PATRONAGE!
-          </div>
+          
           <div style={{ fontSize: '13px', color: '#009900', lineHeight: '1.9' }}>
-            Donations go to <span style={{ color: '#00ff00', fontWeight: 'bold' }}>Gamer&apos;s Conclave</span>,
-            brought to life by <span style={{ color: '#00ff00', fontWeight: 'bold' }}>Jacob</span>.<br />
-            Every dollar keeps this site ad-free and the community growing.
+            DONATE TO: <span style={{ color: '#00ff00', fontWeight: 'bold' }}>GAMER&apos;S CONCLAVE</span>,
+            BROUGHT TO LIFE BY :: <span style={{ color: '#00ff00', fontWeight: 'bold' }}>JACOB </span><br />
+            Every dollar keeps this site ad-free and the community growing.<br />
+          If you enjoy the site, even $1 means a lot. 🐱
           </div>
         </div>
 
@@ -115,8 +117,7 @@ export default function DonatePage() {
 
         {/* BOTTOM NOTE */}
         <div style={{ fontSize: '12px', color: '#004400', textAlign: 'center', lineHeight: '1.8', paddingBottom: '20px' }}>
-          No pressure, no subscription, no guilt trips.<br />
-          If you enjoy the site, even $1 means a lot. 🐱
+
         </div>
 
       </div>
@@ -124,7 +125,7 @@ export default function DonatePage() {
       {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111', marginTop: '20px' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT FOR PASSION, NOT PROFIT</span>
       </footer>
 
     </main>

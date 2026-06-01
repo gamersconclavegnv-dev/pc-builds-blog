@@ -213,7 +213,7 @@ export default function Home() {
       <div style={{ borderBottom: '1px solid #003300' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '12px', color: '#006600', marginBottom: '10px' }}>
-            *** WELCOME TO THE INTERNET ***
+          
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 4vw, 56px)', fontWeight: 'bold', letterSpacing: '4px', margin: '0 0 10px 0', textShadow: '0 0 10px #00ff00' }}>
             GAMER&apos;S CONCLAVE
@@ -448,7 +448,7 @@ export default function Home() {
       <footer style={{ borderTop: '2px solid #00ff00', backgroundColor: '#111' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px', textAlign: 'center', fontSize: '12px', color: '#006600' }}>
           <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-          <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+          <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT FOR PASSION, NOT PROFIT</span>
         </div>
       </footer>
     </main>

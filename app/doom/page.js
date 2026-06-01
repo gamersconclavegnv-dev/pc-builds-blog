@@ -43,7 +43,7 @@ export default function DoomPage() {
       {/* HERO HEADER */}
       <div style={{ padding: '40px 20px 30px', borderBottom: '1px solid #330000', textAlign: 'center', backgroundColor: '#0d0000' }}>
         <div style={{ fontSize: '11px', color: '#660000', letterSpacing: '4px', marginBottom: '10px' }}>
-          &#9608;&#9608; RIP AND TEAR &#9608;&#9608;
+        
         </div>
 
         <pre style={{
@@ -68,7 +68,7 @@ export default function DoomPage() {
           THE ORIGINAL 1993 CLASSIC — RUNNING IN YOUR BROWSER
         </p>
         <p style={{ fontSize: '12px', color: '#660000', margin: '0 0 16px' }}>
-          Powered by js-dos · Shareware Episode 1: Knee-Deep in the Dead
+        
         </p>
 
         {/* SIGN IN PROMPT — shown to logged out users */}
@@ -277,7 +277,7 @@ export default function DoomPage() {
       {/* LORE FOOTER STRIP */}
       <div style={{ margin: '60px 20px 0', borderTop: '1px solid #330000', borderBottom: '1px solid #330000', padding: '20px', backgroundColor: '#0d0000', textAlign: 'center' }}>
         <div style={{ fontSize: '11px', color: '#440000', letterSpacing: '3px', lineHeight: '2' }}>
-          &quot;KNEE-DEEP IN THE DEAD&quot; &nbsp;·&nbsp; &quot;THE SHORES OF HELL&quot; &nbsp;·&nbsp; &quot;INFERNO&quot;
+        
         </div>
         <div style={{ fontSize: '10px', color: '#330000', marginTop: '6px' }}>
           DOOM &copy; 1993 id Software · Shareware version — free to play and distribute
@@ -287,7 +287,7 @@ export default function DoomPage() {
       {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111', marginTop: '40px' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT FOR PASSION, NOT PROFIT</span>
       </footer>
     </main>
   );
