@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useAuth, useClerk } from '@clerk/nextjs';
 
 const disclaimer = "⚠ COMMUNITY RULES: Please keep all posts PG. Violent posts or derogatory language will result in immediate post removal. Repeat offenders will be banned.";
 
@@ -62,9 +62,17 @@ const containerStyle = {
 
 export default function BuildsPage() {
   const { user } = useUser();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const [builds, setBuilds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userReactions, setUserReactions] = useState({});
+  const [userReactions, setUserReactions] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const stored = localStorage.getItem('gc_reactions');
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [search, setSearch] = useState('');
@@ -102,7 +110,9 @@ export default function BuildsPage() {
   const handleReaction = async (buildId, emoji) => {
     const key = `${buildId}-${emoji}`;
     if (userReactions[key]) return;
-    setUserReactions(prev => ({ ...prev, [key]: true }));
+    const updated = { ...userReactions, [key]: true };
+    setUserReactions(updated);
+    try { localStorage.setItem('gc_reactions', JSON.stringify(updated)); } catch {}
     setBuilds(prev => prev.map(build => {
       if (build.id !== buildId) return build;
       const current = build.reactions || {};
@@ -262,24 +272,33 @@ export default function BuildsPage() {
   return (
     <main style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', fontFamily: '"Courier New", Courier, monospace', color: '#00ff00' }}>
 
-      {/* NAV — full width */}
-      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 0' }}>
+      {/* NAV — sticky */}
+      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 0', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ ...containerStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <a href="/" style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', textDecoration: 'none' }}>
             &#9608; GAMER&apos;S CONCLAVE
           </a>
-          <div style={{ display: 'flex', gap: '20px', fontSize: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap', alignItems: 'center' }}>
             <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
             <a href="/games" style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
             <a href="/doom" style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
             <a href="/vote" style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
             <a href="/ideas" style={{ color: '#00ff00', textDecoration: 'none' }}>[ IDEAS ]</a>
             <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
+            {isSignedIn ? (
+              <button
+                onClick={() => signOut({ redirectUrl: '/' })}
+                style={{ background: 'none', border: '1px solid #ff4444', color: '#ff4444', fontFamily: '"Courier New", monospace', fontSize: '13px', cursor: 'pointer', padding: '2px 8px', letterSpacing: '1px' }}>
+                [ SIGN OUT ]
+              </button>
+            ) : (
+              <a href="/sign-in" style={{ color: '#00ff00', textDecoration: 'none' }}>[ SIGN IN ]</a>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* DISCLAIMER — full width */}
+      {/* DISCLAIMER */}
       <div style={{ backgroundColor: '#1a0000', border: '1px solid #ff4444', color: '#ff4444', padding: '12px 20px', fontSize: '12px', textAlign: 'center', letterSpacing: '1px' }}>
         {disclaimer}
       </div>
@@ -521,7 +540,7 @@ export default function BuildsPage() {
         </div>
       </div>
 
-      {/* FOOTER — full width */}
+      {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px 0', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
         <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>

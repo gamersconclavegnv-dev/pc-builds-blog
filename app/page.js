@@ -1,8 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
+import { useAuth, useClerk } from '@clerk/nextjs';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const [scrollImages, setScrollImages] = useState([]);
   const [recentBuilds, setRecentBuilds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,6 @@ export default function Home() {
       fontFamily: '"Courier New", Courier, monospace',
       color: '#00ff00',
       padding: '0',
-      overflowX: 'hidden',
     }}>
 
       <style>{`
@@ -134,23 +136,45 @@ export default function Home() {
         .skel-line { height: 10px; background: #003300; border-radius: 2px; margin-bottom: 6px; }
       `}</style>
 
-      {/* Navigation */}
+      {/* Navigation — sticky so it follows on scroll */}
       <nav style={{
         backgroundColor: '#111',
         borderBottom: '2px solid #00ff00',
         padding: '10px 20px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px' }}>
             &#9608; GAMER&apos;S CONCLAVE
           </div>
-          <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap', alignItems: 'center' }}>
             <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
             <a href="/games" style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
             <a href="/doom" style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
             <a href="/vote" style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
             <a href="/ideas" style={{ color: '#00ff00', textDecoration: 'none' }}>[ IDEAS ]</a>
             <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
+            {isSignedIn ? (
+              <button
+                onClick={() => signOut({ redirectUrl: '/' })}
+                style={{
+                  background: 'none',
+                  border: '1px solid #ff4444',
+                  color: '#ff4444',
+                  fontFamily: '"Courier New", monospace',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  padding: '2px 8px',
+                  letterSpacing: '1px',
+                }}
+              >
+                [ SIGN OUT ]
+              </button>
+            ) : (
+              <a href="/sign-in" style={{ color: '#00ff00', textDecoration: 'none' }}>[ SIGN IN ]</a>
+            )}
           </div>
         </div>
       </nav>
@@ -197,11 +221,7 @@ export default function Home() {
         borderTop: '1px solid #003300',
         backgroundColor: '#050505',
         padding: '20px 0',
-        width: '100vw',
-        position: 'relative',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        boxSizing: 'border-box',
+
       }}>
         <div style={{ fontSize: '11px', color: '#004400', textAlign: 'center', marginBottom: '14px', letterSpacing: '2px' }}>
           &#9608;&#9608; COMMUNITY RIGS — HOVER TO PAUSE &#9608;&#9608;

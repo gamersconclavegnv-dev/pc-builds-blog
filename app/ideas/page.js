@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useAuth, useClerk } from '@clerk/nextjs';
 
 function PixelRobot() {
   const [frame, setFrame] = useState(0);
@@ -19,7 +20,7 @@ function PixelRobot() {
   useEffect(() => {
     const anim = setInterval(() => {
       setFrame(f => (f + 1) % 4);
-      setBobY(b => Math.sin(Date.now() / 400) * 4);
+      setBobY(Math.sin(Date.now() / 400) * 4);
     }, 200);
     return () => clearInterval(anim);
   }, []);
@@ -59,12 +60,9 @@ function PixelRobot() {
         style={{ transform: `translateY(${bobY}px)`, transition: 'transform 0.1s ease', display: 'block' }}
         viewBox="0 0 80 100"
       >
-        {/* Antenna */}
         <line x1="40" y1="4" x2="40" y2="16" stroke="#00ff00" strokeWidth="2"/>
         <rect x="36" y="0" width="8" height="6" fill="#00ff00"/>
-        {/* Head */}
         <rect x="16" y="14" width="48" height="36" fill="#0a0a0a" stroke="#00ff00" strokeWidth="2"/>
-        {/* Eyes */}
         {eyeOpen ? (
           <>
             <rect x="24" y="24" width="10" height="10" fill="#00ff00"/>
@@ -78,22 +76,16 @@ function PixelRobot() {
             <line x1="46" y1="29" x2="56" y2="29" stroke="#00ff00" strokeWidth="2"/>
           </>
         )}
-        {/* Mouth */}
         <rect x="26" y="40" width="4" height="4" fill="#00ff00"/>
         <rect x="34" y="40" width="4" height="4" fill="#00ff00"/>
         <rect x="42" y="40" width="4" height="4" fill="#00ff00"/>
         <rect x="50" y="40" width="4" height="4" fill="#00ff00"/>
-        {/* Neck */}
         <rect x="34" y="50" width="12" height="6" fill="#00ff00"/>
-        {/* Body */}
         <rect x="12" y="56" width="56" height="32" fill="#0a0a0a" stroke="#00ff00" strokeWidth="2"/>
-        {/* Chest light */}
         <rect x="32" y="64" width="16" height="8" fill="#003300" stroke="#00ff00" strokeWidth="1"/>
         <rect x={34 + (frame % 2) * 4} y="66" width="4" height="4" fill="#00ff00"/>
-        {/* Arms */}
         <rect x="0" y="58" width="12" height="6" fill="#0a0a0a" stroke="#00ff00" strokeWidth="2"/>
         <rect x="68" y="58" width="12" height="6" fill="#0a0a0a" stroke="#00ff00" strokeWidth="2"/>
-        {/* Legs */}
         <rect x="20" y="88" width="12" height="12" fill="#0a0a0a" stroke="#00ff00" strokeWidth="2"/>
         <rect x="48" y="88" width="12" height="12" fill="#0a0a0a" stroke="#00ff00" strokeWidth="2"/>
       </svg>
@@ -103,28 +95,76 @@ function PixelRobot() {
 }
 
 export default function IdeasPage() {
-  const [hover, setHover] = useState(false);
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+
+  const [name, setName] = useState('');
+  const [idea, setIdea] = useState('');
+  const [status, setStatus] = useState(null); // null | 'sending' | 'sent' | 'error'
+
+  const handleSubmit = async () => {
+    if (!idea.trim()) return;
+    setStatus('sending');
+    try {
+      const res = await fetch('/api/send-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() || 'Anonymous', idea: idea.trim() }),
+      });
+      if (res.ok) {
+        setStatus('sent');
+        setName('');
+        setIdea('');
+      } else {
+        setStatus('error');
+      }
+    } catch (e) {
+      setStatus('error');
+    }
+  };
+
+  const inputStyle = {
+    backgroundColor: '#0d0d0d',
+    border: '1px solid #00ff00',
+    color: '#00ff00',
+    padding: '10px 12px',
+    fontSize: '13px',
+    fontFamily: '"Courier New", monospace',
+    width: '100%',
+    boxSizing: 'border-box',
+    outline: 'none',
+    resize: 'vertical',
+  };
 
   return (
     <main style={{
       backgroundColor: '#0a0a0a', minHeight: '100vh',
       fontFamily: '"Courier New", Courier, monospace', color: '#00ff00'
     }}>
+
+      {/* NAV — sticky */}
       <nav style={{
         backgroundColor: '#111', borderBottom: '2px solid #00ff00',
         padding: '10px 20px', display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', flexWrap: 'wrap', gap: '10px'
+        alignItems: 'center', flexWrap: 'wrap', gap: '10px', position: 'sticky', top: 0, zIndex: 100
       }}>
         <a href="/" style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', textDecoration: 'none' }}>
-          &#9608; GAMER'S CONCLAVE
+          &#9608; GAMER&apos;S CONCLAVE
         </a>
-        <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap', alignItems: 'center' }}>
           <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
           <a href="/games" style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
           <a href="/doom" style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
           <a href="/vote" style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
           <a href="/ideas" style={{ color: '#ffff00', textDecoration: 'none' }}>[ IDEAS ]</a>
           <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
+          {isSignedIn ? (
+            <button onClick={() => signOut({ redirectUrl: '/' })} style={{ background: 'none', border: '1px solid #ff4444', color: '#ff4444', fontFamily: '"Courier New", monospace', fontSize: '13px', cursor: 'pointer', padding: '2px 8px', letterSpacing: '1px' }}>
+              [ SIGN OUT ]
+            </button>
+          ) : (
+            <a href="/sign-in" style={{ color: '#00ff00', textDecoration: 'none' }}>[ SIGN IN ]</a>
+          )}
         </div>
       </nav>
 
@@ -144,46 +184,87 @@ export default function IdeasPage() {
           &#9608; IDEA-BOT 3000 IS LISTENING &#9608;
         </div>
 
+        {/* IDEA FORM */}
         <div style={{
           border: '1px solid #003300', backgroundColor: '#0d0d0d',
-          padding: '40px 30px', width: '100%', boxSizing: 'border-box'
+          padding: '40px 30px', width: '100%', boxSizing: 'border-box', textAlign: 'left'
         }}>
-          <div style={{ fontSize: '24px', marginBottom: '16px' }}>💡</div>
-          <h2 style={{ fontSize: '20px', letterSpacing: '2px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '24px', marginBottom: '16px', textAlign: 'center' }}>💡</div>
+          <h2 style={{ fontSize: '20px', letterSpacing: '2px', marginBottom: '8px', textAlign: 'center' }}>
             &gt; GOT AN IDEA?
           </h2>
-          <p style={{ fontSize: '13px', color: '#009900', lineHeight: '1.8', marginBottom: '8px' }}>
-            Want to suggest a new feature, game, section, or improvement for Gamer's Conclave?
-          </p>
-          <p style={{ fontSize: '13px', color: '#009900', lineHeight: '1.8', marginBottom: '32px' }}>
-            Whether it's big, small, weird, or obvious — drop us a message. Every idea gets read.
+          <p style={{ fontSize: '13px', color: '#009900', lineHeight: '1.8', marginBottom: '28px', textAlign: 'center' }}>
+            Type it out below — big, small, weird, or obvious. Every idea gets read.
           </p>
 
-          <a
-            href="mailto:gamersconclave.gnv@gmail.com?subject=Idea for Gamer's Conclave"
-            onMouseEnter={() => setHover(true)}
-            onMouseLeave={() => setHover(false)}
-            style={{
-              display: 'inline-block',
-              backgroundColor: hover ? '#00ff00' : '#111',
-              color: hover ? '#000' : '#00ff00',
-              border: '2px solid #00ff00',
-              padding: '14px 32px',
-              fontSize: '14px',
-              fontFamily: '"Courier New", monospace',
-              fontWeight: 'bold',
-              letterSpacing: '2px',
-              textDecoration: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            [ SEND YOUR IDEA ]
-          </a>
+          {status === 'sent' ? (
+            <div style={{ textAlign: 'center', padding: '30px 0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>✅</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', marginBottom: '8px' }}>
+                IDEA TRANSMITTED!
+              </div>
+              <div style={{ fontSize: '13px', color: '#009900', marginBottom: '24px' }}>
+                IDEA-BOT 3000 has received your transmission.
+              </div>
+              <button
+                onClick={() => setStatus(null)}
+                style={{ backgroundColor: '#111', color: '#00ff00', border: '1px solid #00ff00', padding: '8px 20px', fontFamily: '"Courier New", monospace', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}>
+                [ SEND ANOTHER ]
+              </button>
+            </div>
+          ) : (
+            <>
+              <label style={{ fontSize: '11px', color: '#006600', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>
+                YOUR NAME (OPTIONAL)
+              </label>
+              <input
+                style={{ ...inputStyle, marginBottom: '16px' }}
+                placeholder="e.g. RigMaster3000"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                maxLength={60}
+              />
 
-          <div style={{ marginTop: '16px', fontSize: '11px', color: '#004400' }}>
-            gamersconclave.gnv@gmail.com
-          </div>
+              <label style={{ fontSize: '11px', color: '#006600', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>
+                YOUR IDEA *
+              </label>
+              <textarea
+                style={{ ...inputStyle, height: '140px', marginBottom: '8px' }}
+                placeholder="e.g. Add a leaderboard for most reactions on a build..."
+                value={idea}
+                onChange={e => setIdea(e.target.value)}
+                maxLength={1000}
+              />
+              <div style={{ fontSize: '11px', color: '#004400', marginBottom: '20px', textAlign: 'right' }}>
+                {idea.length}/1000
+              </div>
+
+              {status === 'error' && (
+                <div style={{ color: '#ff4444', fontSize: '12px', marginBottom: '14px', border: '1px solid #ff4444', padding: '8px 12px' }}>
+                  ⚠ TRANSMISSION FAILED. Please try again or email us directly at gamersconclave.gnv@gmail.com
+                </div>
+              )}
+
+              <button
+                onClick={handleSubmit}
+                disabled={!idea.trim() || status === 'sending'}
+                style={{
+                  width: '100%',
+                  backgroundColor: (!idea.trim() || status === 'sending') ? '#003300' : '#00ff00',
+                  color: (!idea.trim() || status === 'sending') ? '#006600' : '#000',
+                  border: 'none',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontFamily: '"Courier New", monospace',
+                  fontWeight: 'bold',
+                  cursor: (!idea.trim() || status === 'sending') ? 'not-allowed' : 'pointer',
+                  letterSpacing: '2px',
+                  touchAction: 'manipulation',
+                }}>
+                {status === 'sending' ? '[ TRANSMITTING... ]' : '[ SEND TO IDEA-BOT 3000 ]'}
+              </button>
+            </>
+          )}
         </div>
 
         <div style={{ marginTop: '40px', fontSize: '12px', color: '#004400', letterSpacing: '1px' }}>
@@ -199,7 +280,7 @@ export default function IdeasPage() {
         fontSize: '12px', color: '#006600', backgroundColor: '#111', marginTop: '60px'
       }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-        <span>GAMER'S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
       </footer>
     </main>
   );
