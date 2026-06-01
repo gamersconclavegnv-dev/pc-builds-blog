@@ -66,13 +66,7 @@ export default function BuildsPage() {
   const { signOut } = useClerk();
   const [builds, setBuilds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userReactions, setUserReactions] = useState(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      const stored = localStorage.getItem('gc_reactions');
-      return stored ? JSON.parse(stored) : {};
-    } catch { return {}; }
-  });
+  const [userReactions, setUserReactions] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [search, setSearch] = useState('');
@@ -95,7 +89,20 @@ export default function BuildsPage() {
   }, [user]);
 
   useEffect(() => { fetchBuilds(); }, []);
-
+useEffect(() => {
+  if (!user) return;
+  const fetchUserReactions = async () => {
+    const { data } = await supabase
+      .from('build_reactions')
+      .select('build_id, emoji')
+      .eq('user_id', user.id);
+    if (!data) return;
+    const mapped = {};
+    data.forEach(r => { mapped[`${r.build_id}-${r.emoji}`] = true; });
+    setUserReactions(mapped);
+  };
+  fetchUserReactions();
+}, [user]);
   const fetchBuilds = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -107,21 +114,31 @@ export default function BuildsPage() {
     setLoading(false);
   };
 
-  const handleReaction = async (buildId, emoji) => {
-    const key = `${buildId}-${emoji}`;
-    if (userReactions[key]) return;
-    const updated = { ...userReactions, [key]: true };
-    setUserReactions(updated);
-    try { localStorage.setItem('gc_reactions', JSON.stringify(updated)); } catch {}
-    setBuilds(prev => prev.map(build => {
-      if (build.id !== buildId) return build;
-      const current = build.reactions || {};
-      return { ...build, reactions: { ...current, [emoji]: (current[emoji] || 0) + 1 } };
-    }));
-    const { data: current } = await supabase.from('builds').select('reactions').eq('id', buildId).single();
-    const updatedReactions = { ...(current?.reactions || {}), [emoji]: ((current?.reactions?.[emoji]) || 0) + 1 };
-    await supabase.from('builds').update({ reactions: updatedReactions }).eq('id', buildId);
-  };
+ const handleReaction = async (buildId, emoji) => {
+  if (!user) { alert('Please sign in to react.'); return; }
+  const key = `${buildId}-${emoji}`;
+  if (userReactions[key]) return;
+
+  setUserReactions(prev => ({ ...prev, [key]: true }));
+  setBuilds(prev => prev.map(build => {
+    if (build.id !== buildId) return build;
+    const current = build.reactions || {};
+    return { ...build, reactions: { ...current, [emoji]: (current[emoji] || 0) + 1 } };
+  }));
+
+  const { error: insertError } = await supabase
+    .from('build_reactions')
+    .insert({ build_id: buildId, user_id: user.id, emoji });
+
+  if (insertError) {
+    setUserReactions(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+    return;
+  }
+
+  const { data: current } = await supabase.from('builds').select('reactions').eq('id', buildId).single();
+  const updated = { ...(current?.reactions || {}), [emoji]: ((current?.reactions?.[emoji]) || 0) + 1 };
+  await supabase.from('builds').update({ reactions: updated }).eq('id', buildId);
+};
 
   const handlePhotosChange = async (e) => {
     const files = Array.from(e.target.files);
