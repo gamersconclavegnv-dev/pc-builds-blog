@@ -106,6 +106,14 @@ export default function IdeasPage() {
     if (!idea.trim()) return;
     setStatus('sending');
     try {
+      const senderName = name.trim() || 'Anonymous';
+      const ideaHtml = idea.trim().split('\n').join('<br/>');
+      const html = '<div style="font-family:monospace;background:#0a0a0a;color:#00ff00;padding:24px">'
+        + '<h2>NEW IDEA TRANSMISSION</h2>'
+        + '<p><strong>FROM:</strong> ' + senderName + '</p>'
+        + '<p>' + ideaHtml + '</p>'
+        + '<p style="color:#004400;font-size:11px">Sent via IDEA-BOT 3000 - gamersconclave.net</p>'
+        + '</div>';
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -115,9 +123,8 @@ export default function IdeasPage() {
         body: JSON.stringify({
           from: 'IDEA-BOT 3000 <ideas@gamersconclave.net>',
           to: ['gamersconclave.gnv@gmail.com'],
-          subject: `💡 New Idea from ${name.trim() || 'Anonymous'}`,
-          html: `<div style="font-family:monospace;background:#0a0a0a;color:#00ff00;padding:24px;border:2px solid #00ff00"><h2>&#9608; NEW IDEA TRANSMISSION &#9608;</h2><p><strong>FROM:</strong> ${name.trim() || 'Anonymous'}</p><hr style="border-color:#003300"/><p style="line-height:1.8">${idea.trim().replace(/
-/g, '<br/>')}</p><hr style="border-color:#003300"/><p style="color:#004400;font-size:11px">Sent via IDEA-BOT 3000 · gamersconclave.net</p></div>`,
+          subject: 'New Idea from ' + senderName,
+          html: html,
         }),
       });
       if (res.ok) {
