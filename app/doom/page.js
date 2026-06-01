@@ -1,35 +1,42 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useAuth, useClerk } from '@clerk/nextjs';
 
 export default function DoomPage() {
   const [launched, setLaunched] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // DOS.zone direct game page — has mobile touch controls built in
-  const DOOM_IFRAME_URL =
-    'https://js-dos.com/games/doom.exe.html';
-
+  const DOOM_IFRAME_URL = 'https://js-dos.com/games/doom.exe.html';
   const DOOM_DIRECT_URL = 'https://dos.zone/doom-dec-1993/';
 
   return (
     <main style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', fontFamily: '"Courier New", Courier, monospace', color: '#00ff00' }}>
 
       {/* NAV */}
-      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' , position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', position: 'sticky', top: 0, zIndex: 100 }}>
         <a href="/" style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', textDecoration: 'none' }}>
-          &#9608; GAMER'S CONCLAVE
+          &#9608; GAMER&apos;S CONCLAVE
         </a>
-        <div style={{ display: 'flex', gap: '20px', fontSize: '14px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap', alignItems: 'center' }}>
           <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
           <a href="/games" style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
           <a href="/doom" style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
           <a href="/vote" style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
           <a href="/ideas" style={{ color: '#00ff00', textDecoration: 'none' }}>[ IDEAS ]</a>
           <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
+          {isSignedIn ? (
+            <button onClick={() => signOut({ redirectUrl: '/' })} style={{ background: 'none', border: '1px solid #ff4444', color: '#ff4444', fontFamily: '"Courier New", monospace', fontSize: '13px', cursor: 'pointer', padding: '2px 8px', letterSpacing: '1px' }}>
+              [ SIGN OUT ]
+            </button>
+          ) : (
+            <a href="/sign-in" style={{ color: '#00ff00', textDecoration: 'none' }}>[ SIGN IN ]</a>
+          )}
         </div>
       </nav>
 
@@ -39,7 +46,6 @@ export default function DoomPage() {
           &#9608;&#9608; RIP AND TEAR &#9608;&#9608;
         </div>
 
-        {/* ASCII DOOM LOGO */}
         <pre style={{
           color: '#ff2200',
           fontSize: 'clamp(6px, 1.2vw, 13px)',
@@ -61,11 +67,20 @@ export default function DoomPage() {
         <p style={{ fontSize: '14px', color: '#cc3300', margin: '0 0 6px', letterSpacing: '2px' }}>
           THE ORIGINAL 1993 CLASSIC — RUNNING IN YOUR BROWSER
         </p>
-        <p style={{ fontSize: '12px', color: '#660000', margin: 0 }}>
+        <p style={{ fontSize: '12px', color: '#660000', margin: '0 0 16px' }}>
           Powered by js-dos · Shareware Episode 1: Knee-Deep in the Dead
         </p>
 
-        {/* MOBILE BADGE */}
+        {/* SIGN IN PROMPT — shown to logged out users */}
+        {!isSignedIn && (
+          <div style={{ display: 'inline-block', border: '1px solid #440000', backgroundColor: '#1a0000', padding: '10px 20px', fontSize: '12px', color: '#993300', letterSpacing: '1px' }}>
+            <a href="/sign-in" style={{ color: '#ff4444', textDecoration: 'none', fontWeight: 'bold' }}>[ SIGN IN ]</a>
+            <span style={{ margin: '0 8px' }}>or</span>
+            <a href="/sign-up" style={{ color: '#ff4444', textDecoration: 'none', fontWeight: 'bold' }}>[ CREATE ACCOUNT ]</a>
+            <span style={{ marginLeft: '8px' }}>to track your scores and join the community</span>
+          </div>
+        )}
+
         {isMobile && (
           <div style={{ marginTop: '14px', display: 'inline-block', border: '1px solid #ff4400', backgroundColor: '#1a0500', padding: '8px 16px', fontSize: '12px', color: '#ff6600', letterSpacing: '1px' }}>
             &#128241; MOBILE DETECTED — TOUCH CONTROLS ENABLED
@@ -120,7 +135,6 @@ export default function DoomPage() {
               </div>
             </div>
 
-            {/* Desktop controls */}
             {!isMobile && (
               <div style={{ border: '1px solid #330000', backgroundColor: '#0d0000', padding: '16px' }}>
                 <div style={{ fontSize: '12px', color: '#ff2200', letterSpacing: '2px', marginBottom: '10px', fontWeight: 'bold' }}>
@@ -139,7 +153,6 @@ export default function DoomPage() {
               </div>
             )}
 
-            {/* Mobile controls */}
             {isMobile && (
               <div style={{ border: '1px solid #ff4400', backgroundColor: '#0d0000', padding: '16px' }}>
                 <div style={{ fontSize: '12px', color: '#ff6600', letterSpacing: '2px', marginBottom: '10px', fontWeight: 'bold' }}>
@@ -170,7 +183,6 @@ export default function DoomPage() {
               </div>
             </div>
 
-            {/* LAUNCH BUTTON */}
             <button
               onClick={() => setLaunched(true)}
               style={{
@@ -192,9 +204,8 @@ export default function DoomPage() {
               {isMobile ? '[ LAUNCH DOOM — TOUCH READY ]' : '[ LAUNCH DOOM ]'}
             </button>
 
-            {/* Mobile fallback link */}
             {isMobile && (
-              <a
+<a              
                 href={DOOM_DIRECT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -226,7 +237,7 @@ export default function DoomPage() {
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               {isMobile && (
-                <a
+                
                   href={DOOM_DIRECT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -244,7 +255,6 @@ export default function DoomPage() {
             </div>
           </div>
 
-          {/* Taller iframe on mobile for touch overlay room */}
           <div style={{ border: '2px solid #ff2200', boxShadow: '0 0 20px #ff000044', lineHeight: 0 }}>
             <iframe
               src={DOOM_IFRAME_URL}
@@ -267,17 +277,17 @@ export default function DoomPage() {
       {/* LORE FOOTER STRIP */}
       <div style={{ margin: '60px 20px 0', borderTop: '1px solid #330000', borderBottom: '1px solid #330000', padding: '20px', backgroundColor: '#0d0000', textAlign: 'center' }}>
         <div style={{ fontSize: '11px', color: '#440000', letterSpacing: '3px', lineHeight: '2' }}>
-          "KNEE-DEEP IN THE DEAD" &nbsp;·&nbsp; "THE SHORES OF HELL" &nbsp;·&nbsp; "INFERNO"
+          &quot;KNEE-DEEP IN THE DEAD&quot; &nbsp;·&nbsp; &quot;THE SHORES OF HELL&quot; &nbsp;·&nbsp; &quot;INFERNO&quot;
         </div>
         <div style={{ fontSize: '10px', color: '#330000', marginTop: '6px' }}>
-          DOOM © 1993 id Software · Shareware version — free to play and distribute
+          DOOM &copy; 1993 id Software · Shareware version — free to play and distribute
         </div>
       </div>
 
       {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111', marginTop: '40px' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
-        <span>GAMER'S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
+        <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT WITH PASSION, NOT PROFIT</span>
       </footer>
     </main>
   );
