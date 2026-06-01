@@ -80,14 +80,14 @@ export default function VotePage() {
         <div style={{ fontSize: '16px', color: '#009900', marginBottom: '40px', maxWidth: '480px', lineHeight: '1.7' }}>
           // PC of the Week · Month · Year voting is under construction //<br />
           <span style={{ fontSize: '13px', color: '#006600' }}>
-            Build the community first. Voting comes next.
+           
           </span>
         </div>
 
         {/* FAKE PROGRESS BAR */}
         <div style={{ width: '100%', maxWidth: '440px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#006600', marginBottom: '6px' }}>
-            <span>SYSTEM BUILD PROGRESS</span>
+            <span>VOTE PAGE PROGRESS</span>
             <span>72%</span>
           </div>
           <div style={{ backgroundColor: '#0d0d0d', border: '1px solid #003300', height: '18px', overflow: 'hidden' }}>
@@ -101,7 +101,7 @@ export default function VotePage() {
         {/* NOTIFY BOX */}
         <div style={{ border: '1px solid #003300', backgroundColor: '#0d0d0d', padding: '24px', maxWidth: '440px', width: '100%' }}>
           <div style={{ fontSize: '13px', color: '#009900', marginBottom: '16px' }}>
-            Want to be notified when voting goes live?
+
           </div>
           <a href="/ideas" style={{ textDecoration: 'none' }}>
             <button style={{ backgroundColor: '#00ff00', color: '#000', border: 'none', padding: '10px 28px', fontSize: '13px', fontFamily: '"Courier New", monospace', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '2px' }}>
@@ -109,7 +109,7 @@ export default function VotePage() {
             </button>
           </a>
           <div style={{ fontSize: '11px', color: '#004400', marginTop: '12px' }}>
-            Post a suggestion on the Ideas Board and we&apos;ll keep you in the loop.
+           
           </div>
         </div>
 

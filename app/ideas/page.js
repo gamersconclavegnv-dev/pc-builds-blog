@@ -187,7 +187,7 @@ export default function IdeasPage() {
       <div style={{ padding: '60px 20px 20px', borderBottom: '1px solid #003300' }}>
         <div style={{ fontSize: '11px', color: '#006600' }}>&#9608;&#9608; COMMUNITY &#9608;&#9608;</div>
         <h1 style={{ fontSize: '32px', margin: '5px 0 10px', letterSpacing: '3px' }}>IDEAS BOARD</h1>
-        <p style={{ fontSize: '13px', color: '#009900', margin: 0 }}>Got a feature request or wild idea? We want to hear it.</p>
+        <p style={{ fontSize: '13px', color: '#009900', margin: 0 }}></p>
       </div>
 
       <div style={{
@@ -210,7 +210,7 @@ export default function IdeasPage() {
             &gt; GOT AN IDEA?
           </h2>
           <p style={{ fontSize: '13px', color: '#009900', lineHeight: '1.8', marginBottom: '28px', textAlign: 'center' }}>
-            Type it out below — big, small, weird, or obvious. Every idea gets read.
+            Big, small, weird, or obvious. Every idea gets read :)
           </p>
 
           {status === 'sent' ? (
