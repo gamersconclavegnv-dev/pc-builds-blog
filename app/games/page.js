@@ -512,7 +512,17 @@ function FroggerGame() {
     };
     const handleKey=(e)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();if(e.key==='ArrowUp')frog.y-=CELL;if(e.key==='ArrowDown')frog.y=Math.min(H-CELL/2,frog.y+CELL);if(e.key==='ArrowLeft')frog.x-=CELL;if(e.key==='ArrowRight')frog.x+=CELL;if(e.key==='r'||e.key==='R'){cancelAnimationFrame(animId);reset();animId=requestAnimationFrame(update);}};
     window.addEventListener('keydown',handleKey);animId=requestAnimationFrame(update);
-    canvas._froggerControl=(dir)=>{if(dir==='up')frog.y-=CELL;if(dir==='down')frog.y=Math.min(H-CELL/2,frog.y+CELL);if(dir==='left')frog.x-=CELL;if(dir==='right')frog.x+=CELL;};
+   // REPLACE WITH:
+let lastControlTime=0;
+canvas._froggerControl=(dir)=>{
+  const now=Date.now();
+  if(now-lastControlTime<150)return;
+  lastControlTime=now;
+  if(dir==='up')frog.y-=CELL;
+  if(dir==='down')frog.y=Math.min(H-CELL/2,frog.y+CELL);
+  if(dir==='left')frog.x-=CELL;
+  if(dir==='right')frog.x+=CELL;
+};
     canvas._froggerRestart=()=>{cancelAnimationFrame(animId);reset();animId=requestAnimationFrame(update);};
     return()=>{cancelAnimationFrame(animId);window.removeEventListener('keydown',handleKey);};
   },[]);
