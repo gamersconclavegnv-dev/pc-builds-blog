@@ -106,10 +106,19 @@ export default function IdeasPage() {
     if (!idea.trim()) return;
     setStatus('sending');
     try {
-      const res = await fetch('/api/send-idea', {
+      const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() || 'Anonymous', idea: idea.trim() }),
+        headers: {
+          'Authorization': 'Bearer ' + process.env.NEXT_PUBLIC_RESEND_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'IDEA-BOT 3000 <ideas@gamersconclave.net>',
+          to: ['gamersconclave.gnv@gmail.com'],
+          subject: `💡 New Idea from ${name.trim() || 'Anonymous'}`,
+          html: `<div style="font-family:monospace;background:#0a0a0a;color:#00ff00;padding:24px;border:2px solid #00ff00"><h2>&#9608; NEW IDEA TRANSMISSION &#9608;</h2><p><strong>FROM:</strong> ${name.trim() || 'Anonymous'}</p><hr style="border-color:#003300"/><p style="line-height:1.8">${idea.trim().replace(/
+/g, '<br/>')}</p><hr style="border-color:#003300"/><p style="color:#004400;font-size:11px">Sent via IDEA-BOT 3000 · gamersconclave.net</p></div>`,
+        }),
       });
       if (res.ok) {
         setStatus('sent');
