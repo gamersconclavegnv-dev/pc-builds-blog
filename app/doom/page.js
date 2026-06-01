@@ -237,7 +237,7 @@ export default function DoomPage() {
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               {isMobile && (
-                
+<a                
                   href={DOOM_DIRECT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
