@@ -121,9 +121,10 @@ function SnakeGame() {
       ctx.fillStyle = '#ffff00'; ctx.fillRect(gs.food.x * size, gs.food.y * size, size - 2, size - 2);
       ctx.fillStyle = '#006600'; ctx.font = '14px Courier New'; ctx.fillText(`SCORE: ${gs.score}`, 8, 20);
     };
-    const reset = () => { gs.snake = [{ x: 10, y: 10 }]; gs.dir = { x: 1, y: 0 }; gs.score = 0; gs.running = true; placeFood(); };
+   const reset = () => { gs.snake = [{ x: 10, y: 10 }]; gs.dir = { x: 1, y: 0 }; gs.nextDir = { x: 1, y: 0 }; gs.score = 0; gs.running = true; placeFood(); };
     const update = () => {
       if (!gs.running) return;
+      gs.dir = gs.nextDir;
       const head = { x: gs.snake[0].x + gs.dir.x, y: gs.snake[0].y + gs.dir.y };
       if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || gs.snake.some(s => s.x === head.x && s.y === head.y)) {
         gs.running = false;
@@ -138,21 +139,21 @@ function SnakeGame() {
     };
     const handleKey = (e) => {
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-      if (e.key === 'ArrowUp' && gs.dir.y === 0) gs.dir = { x: 0, y: -1 };
-      if (e.key === 'ArrowDown' && gs.dir.y === 0) gs.dir = { x: 0, y: 1 };
-      if (e.key === 'ArrowLeft' && gs.dir.x === 0) gs.dir = { x: -1, y: 0 };
-      if (e.key === 'ArrowRight' && gs.dir.x === 0) gs.dir = { x: 1, y: 0 };
-      if (e.key === 'r' || e.key === 'R') { clearInterval(interval); reset(); interval = setInterval(update, 150); }
+      if (e.key === 'ArrowUp' && gs.dir.y === 0) gs.nextDir = { x: 0, y: -1 };
+      if (e.key === 'ArrowDown' && gs.dir.y === 0) gs.nextDir = { x: 0, y: 1 };
+      if (e.key === 'ArrowLeft' && gs.dir.x === 0) gs.nextDir = { x: -1, y: 0 };
+      if (e.key === 'ArrowRight' && gs.dir.x === 0) gs.nextDir = { x: 1, y: 0 };
+      if (e.key === 'r' || e.key === 'R') { clearInterval(interval); reset(); interval = setInterval(update, 200); }
     };
     window.addEventListener('keydown', handleKey);
-    let interval = setInterval(update, 150); draw();
+    let interval = setInterval(update, 200); draw();
     canvas._snakeControl = (dir) => {
-      if (dir === 'up' && gs.dir.y === 0) gs.dir = { x: 0, y: -1 };
-      if (dir === 'down' && gs.dir.y === 0) gs.dir = { x: 0, y: 1 };
-      if (dir === 'left' && gs.dir.x === 0) gs.dir = { x: -1, y: 0 };
-      if (dir === 'right' && gs.dir.x === 0) gs.dir = { x: 1, y: 0 };
+      if (dir === 'up' && gs.dir.y === 0) gs.nextDir = { x: 0, y: -1 };
+      if (dir === 'down' && gs.dir.y === 0) gs.nextDir = { x: 0, y: 1 };
+      if (dir === 'left' && gs.dir.x === 0) gs.nextDir = { x: -1, y: 0 };
+      if (dir === 'right' && gs.dir.x === 0) gs.nextDir = { x: 1, y: 0 };
     };
-    canvas._snakeRestart = () => { clearInterval(interval); reset(); interval = setInterval(update, 150); };
+    canvas._snakeRestart = () => { clearInterval(interval); reset(); interval = setInterval(update, 200); };
     return () => { clearInterval(interval); window.removeEventListener('keydown', handleKey); };
   }, []);
   return (
