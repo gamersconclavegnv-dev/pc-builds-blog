@@ -26,7 +26,7 @@ const labelStyle = {
   display: 'block',
   marginTop: '12px',
 };
-
+const sanitize = (str) => str?.replace(/<[^>]*>/g, '').trim() ?? '';
 const emptyForm = {
   title: '', author: '', cpu: '', gpu: '', motherboard: '', ram: '',
   storage: '', psu: '', case: '', description: '', partLink: '', photos: [],
@@ -219,18 +219,18 @@ useEffect(() => {
     try {
       if (editingId) {
         const { error } = await supabase.from('builds').update({
-          title: form.title.toUpperCase(),
-          author: form.author,
+          title: sanitize(form.title).toUpperCase(),
+          author: sanitize(form.author),
           parts: partsPayload,
-          description: form.description,
+          description: sanitize(form.description),
         }).eq('id', editingId);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('builds').insert([{
-          title: form.title.toUpperCase(),
-          author: form.author,
+          title: sanitize(form.title).toUpperCase(),
+          author: sanitize(form.author),
           parts: partsPayload,
-          description: form.description,
+          description: sanitize(form.description),
           reactions: { '🔥': 0, '💀': 0, '👾': 0, '⚡': 0, '🖥️': 0 },
           user_id: user?.id || null,
         }]);
