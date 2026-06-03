@@ -142,6 +142,13 @@ useEffect(() => {
 
   const handlePhotosChange = async (e) => {
     const files = Array.from(e.target.files);
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const invalidFiles = files.filter(f => !validTypes.includes(f.type));
+    if (invalidFiles.length > 0) {
+      alert('Only image files are allowed (JPG, PNG, GIF, WEBP).');
+      e.target.value = '';
+      return;
+}
     if (!files.length) return;
     const MAX = 5;
     const remaining = MAX - form.photos.length;
