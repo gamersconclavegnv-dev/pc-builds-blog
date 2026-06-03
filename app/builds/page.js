@@ -530,7 +530,7 @@ useEffect(() => {
                   )}
 
                   {parts.partLink && (
-                    <a href={parts.partLink} target="_blank" rel="noopener noreferrer"
+                    <a href={parts.partLink?.startsWith('https://') ? parts.partLink : '#'}
                       style={{ display: 'inline-block', fontSize: '12px', color: '#ffff00', textDecoration: 'none', marginBottom: '16px', border: '1px solid #666600', padding: '4px 10px' }}>
                       [ VIEW PARTS LIST ]
                     </a>
