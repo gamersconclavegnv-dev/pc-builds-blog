@@ -215,7 +215,11 @@ useEffect(() => {
       setSubmitting(false);
       return;
     }
-
+    const lastPost = localStorage.getItem('gc_last_post');
+    if (lastPost && Date.now() - parseInt(lastPost) < 60000) {
+      alert('Please wait a minute before posting another build.');
+     return;
+    }
     try {
       if (editingId) {
         const { error } = await supabase.from('builds').update({
@@ -238,6 +242,7 @@ useEffect(() => {
       }
       cancelForm();
       setSubmitted(true);
+      localStorage.setItem('gc_last_post', Date.now().toString());
       setTimeout(() => setSubmitted(false), 4000);
       await fetchBuilds();
     } catch (err) {
