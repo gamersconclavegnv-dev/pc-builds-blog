@@ -32,25 +32,17 @@ const emptyForm = {
   storage: '', psu: '', case: '', description: '', partLink: '', photos: [],
 };
 
-const compressImage = (file) => new Promise((resolve) => {
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 800;
-      let { width, height } = img;
-      if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
-      if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
-      const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-    };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
-});
+const uploadToR2 = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const { url } = await res.json();
+  return url;
+};
 
 const containerStyle = {
   maxWidth: '1400px',
@@ -157,8 +149,8 @@ useEffect(() => {
     e.target.value = '';
     setUploadingPhotos(true);
     try {
-      const compressed = await Promise.all(toProcess.map(f => compressImage(f)));
-      setForm(prev => ({ ...prev, photos: [...prev.photos, ...compressed] }));
+      const urls = await Promise.all(toProcess.map(f => uploadToR2(f)));
+      setForm(prev => ({ ...prev, photos: [...prev.photos, ...urls] }));
     } catch (err) {
       alert('Failed to process photos. Please try again.');
     }
@@ -215,13 +207,7 @@ useEffect(() => {
       case: form.case, partLink: form.partLink, photos: form.photos,
     });
 
-    const payloadSizeKB = Math.round(new Blob([partsPayload]).size / 1024);
-    if (payloadSizeKB > 900) {
-      alert(`Your photos are too large (${payloadSizeKB}KB). Please use fewer or smaller photos.`);
-      submitLockRef.current = false;
-      setSubmitting(false);
-      return;
-    }
+   
     const lastPost = localStorage.getItem('gc_last_post');
     if (lastPost && Date.now() - parseInt(lastPost) < 60000) {
       alert('Please wait a minute before posting another build.');
@@ -412,7 +398,7 @@ useEffect(() => {
                 style={{ ...inputStyle, padding: '6px', opacity: (form.photos.length >= 5 || uploadingPhotos) ? 0.4 : 1 }}
               />
               <div style={{ fontSize: '11px', color: '#004400', marginTop: '4px' }}>
-                {uploadingPhotos ? '⏳ COMPRESSING PHOTOS...' : `${form.photos.length}/5 photos added`}
+                {uploadingPhotos ? '⏳ UPLOADING PHOTOS...' : `${form.photos.length}/5 photos added`}
               </div>
 
               {form.photos.length > 0 && (
@@ -442,7 +428,7 @@ useEffect(() => {
                     cursor: (submitting || uploadingPhotos) ? 'not-allowed' : 'pointer', letterSpacing: '2px',
                     opacity: (submitting || uploadingPhotos) ? 0.7 : 1,
                   }}>
-                  {submitting ? '[ POSTING... ]' : uploadingPhotos ? '[ PROCESSING PHOTOS... ]' : editingId ? '[ SAVE CHANGES ]' : '[ SUBMIT BUILD ]'}
+                  {submitting ? '[ POSTING... ]' : uploadingPhotos ? '[ UPLOADING PHOTOS... ]' : editingId ? '[ SAVE CHANGES ]' : '[ SUBMIT BUILD ]'}
                 </button>
                 <button
                   onClick={cancelForm}
