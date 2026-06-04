@@ -10,6 +10,8 @@ const R2 = new S3Client({
   },
 });
 
+export const runtime = 'nodejs';
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -22,16 +24,16 @@ export async function POST(request) {
     const fileName = `builds/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
 
     await R2.send(new PutObjectCommand({
-      Bucket: 'gamersclave-builds',
+      Bucket: 'gamersconclave-builds',
       Key: fileName,
       Body: buffer,
-      ContentType: 'image/jpeg',
+      ContentType: file.type || 'image/jpeg',
     }));
 
     const url = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${fileName}`;
     return NextResponse.json({ url });
   } catch (err) {
     console.error('R2 upload error:', err);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Upload failed' }, { status: 500 });
   }
 }
