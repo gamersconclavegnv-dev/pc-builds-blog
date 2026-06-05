@@ -508,7 +508,7 @@ useEffect(() => {
                   </div>
 
                   <div style={{ fontSize: '11px', color: '#006600', marginBottom: '14px' }}>
-                    posted by {build.author} · {new Date(build.created_at).toLocaleDateString()}
+                    posted by <a href={build.user_id ? `/profile/${build.user_id}` : '#'} style={{ color: '#006600', textDecoration: 'none' }}>{build.author}</a> · {new Date(build.created_at).toLocaleDateString()}
                   </div>
 
                   <div style={{ fontSize: '12px', color: '#009900', marginBottom: '14px', lineHeight: '1.8' }}>
