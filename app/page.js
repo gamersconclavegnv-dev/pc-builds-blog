@@ -348,26 +348,7 @@ export default function Home() {
         .bench-result{animation:glowPulse 1.5s ease-in-out infinite}
         .lb-row:hover{background:#0d0d0d}
       `}</style>
-
-      {/* NAV */}
-      <nav style={{ backgroundColor:'#111', borderBottom:'2px solid #00ff00', padding:'10px 20px', position:'sticky', top:0, zIndex:100 }}>
-        <div style={{ maxWidth:'1400px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'10px' }}>
-          <div style={{ fontSize:'22px', fontWeight:'bold', letterSpacing:'2px' }}>&#9608; GAMER&apos;S CONCLAVE</div>
-          <div style={{ display:'flex', gap:'12px', fontSize:'13px', flexWrap:'wrap', alignItems:'center' }}>
-            <a href="/builds" style={{ color:'#00ff00', textDecoration:'none' }}>[ BUILDS ]</a>
-            <a href="/forum"  style={{ color:'#00ff00', textDecoration:'none' }}>[ FORUM ]</a>
-            <a href="/games"  style={{ color:'#00ff00', textDecoration:'none' }}>[ FLASH GAMES ]</a>
-            <a href="/doom"   style={{ color:'#ff4444', textDecoration:'none' }}>[ DOOM ]</a>
-            <a href="/vote"   style={{ color:'#00ff00', textDecoration:'none' }}>[ VOTE ]</a>
-            <a href="/ideas"  style={{ color:'#00ff00', textDecoration:'none' }}>[ IDEAS ]</a>
-            <a href="/donate" style={{ color:'#ffff00', textDecoration:'none' }}>[ DONATE ]</a>
-            {isSignedIn
-              ? <button onClick={() => signOut({ redirectUrl:'/' })} style={{ background:'none', border:'1px solid #ff4444', color:'#ff4444', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor:'pointer', padding:'2px 8px' }}>[ SIGN OUT ]</button>
-              : <a href="/sign-in" style={{ color:'#00ff00', textDecoration:'none' }}>[ SIGN IN ]</a>
-            }
-          </div>
-        </div>
-      </nav>
+    
 
       {/* HERO */}
       <div style={{ borderBottom:'1px solid #003300' }}>
