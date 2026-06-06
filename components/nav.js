@@ -18,13 +18,15 @@ export default function Nav() {
           <a href="/vote"   style={{ color:'#00ff00', textDecoration:'none' }}>[ VOTE ]</a>
           <a href="/ideas"  style={{ color:'#00ff00', textDecoration:'none' }}>[ IDEAS ]</a>
           <a href="/donate" style={{ color:'#ffff00', textDecoration:'none' }}>[ DONATE ]</a>
-          {isSignedIn
-            ? <>
-                <a href={`/profile/${user?.id}`} style={{ color:'#00ff00', textDecoration:'none' }}>[ MY PROFILE ]</a>
-                <button onClick={() => signOut({ redirectUrl: '/' })} style={{ background:'none', border:'1px solid #ff4444', color:'#ff4444', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor:'pointer', padding:'2px 8px' }}>[ SIGN OUT ]</button>
-              </>
-            : <a href="/sign-in" style={{ color:'#00ff00', textDecoration:'none' }}>[ SIGN IN ]</a>
-          }
+          {isSignedIn && user
+  ? <>
+      <a href={`/profile/${user.id}`} style={{ color:'#00ff00', textDecoration:'none' }}>[ MY PROFILE ]</a>
+      <button onClick={() => signOut({ redirectUrl: '/' })} style={{ background:'none', border:'1px solid #ff4444', color:'#ff4444', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor:'pointer', padding:'2px 8px' }}>[ SIGN OUT ]</button>
+    </>
+  : !isSignedIn
+    ? <a href="/sign-in" style={{ color:'#00ff00', textDecoration:'none' }}>[ SIGN IN ]</a>
+    : null
+}
         </div>
       </div>
     </nav>
