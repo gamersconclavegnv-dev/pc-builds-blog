@@ -355,6 +355,7 @@ export default function Home() {
           <div style={{ fontSize:'22px', fontWeight:'bold', letterSpacing:'2px' }}>&#9608; GAMER&apos;S CONCLAVE</div>
           <div style={{ display:'flex', gap:'12px', fontSize:'13px', flexWrap:'wrap', alignItems:'center' }}>
             <a href="/builds" style={{ color:'#00ff00', textDecoration:'none' }}>[ BUILDS ]</a>
+            <a href="/forum"  style={{ color:'#00ff00', textDecoration:'none' }}>[ FORUM ]</a>
             <a href="/games"  style={{ color:'#00ff00', textDecoration:'none' }}>[ FLASH GAMES ]</a>
             <a href="/doom"   style={{ color:'#ff4444', textDecoration:'none' }}>[ DOOM ]</a>
             <a href="/vote"   style={{ color:'#00ff00', textDecoration:'none' }}>[ VOTE ]</a>
