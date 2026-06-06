@@ -156,8 +156,16 @@ const CPU_TIERS = [
 const RAM_SCORES  = { 4:200, 8:600, 16:1200, 32:1800, 64:2400, 128:3000 };
 const CORE_SCORES = { 2:100, 4:400, 6:700, 8:1000, 10:1200, 12:1400, 16:1700, 20:2000, 24:2300, 32:2600 };
 
-function scoreGPU(s) { for (const t of GPU_TIERS) { if (t.match.test(s)) return t.score; } return 500; }
-function scoreCPU(s) { for (const t of CPU_TIERS) { if (t.match.test(s)) return t.score; } return 800; }
+function scoreGPU(s) {
+  const n = s.replace(/(nvidia|amd|intel|geforce|radeon|graphics|gpu|card)/gi, '').trim();
+  for (const t of GPU_TIERS) { if (t.match.test(n)) return t.score; }
+  return 500;
+}
+function scoreCPU(s) {
+  const n = s.replace(/(amd|intel|ryzen|core|processor|cpu|@.*ghz)/gi, '').trim();
+  for (const t of CPU_TIERS) { if (t.match.test(n)) return t.score; }
+  return 800;
+}
 function scoreRAM(gb) {
   const keys = Object.keys(RAM_SCORES).map(Number).sort((a,b)=>a-b);
   for (let i=keys.length-1;i>=0;i--) { if (gb>=keys[i]) return RAM_SCORES[keys[i]]; } return 100;
