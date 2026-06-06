@@ -23,10 +23,10 @@ export default function CategoryPage({ params }) {
   const [category, setCategory]     = useState(null);
   const [threads, setThreads]       = useState([]);
   const [postCounts, setPostCounts] = useState({});
+  const [profiles, setProfiles]     = useState({});
   const [loading, setLoading]       = useState(true);
   const [notFound, setNotFound]     = useState(false);
 
-  // new thread form
   const [showForm, setShowForm]     = useState(false);
   const [newTitle, setNewTitle]     = useState('');
   const [newBody, setNewBody]       = useState('');
@@ -69,6 +69,17 @@ export default function CategoryPage({ params }) {
         counts[p.thread_id] = (counts[p.thread_id] || 0) + 1;
       });
       setPostCounts(counts);
+
+      // fetch usernames for all thread authors
+      const userIds = [...new Set(threads.map(t => t.user_id))];
+      const { data: profileRows } = await supabase
+        .from('profiles')
+        .select('user_id, username')
+        .in('user_id', userIds);
+
+      const profileMap = {};
+      (profileRows || []).forEach(p => { profileMap[p.user_id] = p.username; });
+      setProfiles(profileMap);
     }
 
     setLoading(false);
@@ -122,12 +133,12 @@ export default function CategoryPage({ params }) {
     return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
   };
 
+  const getUsername = (userId) => profiles[userId] || userId.slice(0, 8) + '...';
+
   const icon = CATEGORY_ICONS[slug] || '📁';
 
   return (
     <main style={{ backgroundColor:'#0a0a0a', minHeight:'100vh', fontFamily:'"Courier New", Courier, monospace', color:'#00ff00' }}>
-
-      
 
       {/* BREADCRUMB + HEADER */}
       <div style={{ borderBottom:'1px solid #003300' }}>
@@ -230,7 +241,6 @@ export default function CategoryPage({ params }) {
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:'2px' }}>
 
-                {/* TABLE HEADER */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 90px', gap:'10px', padding:'8px 16px', fontSize:'10px', color:'#004400', letterSpacing:'1px', borderBottom:'1px solid #002200' }}>
                   <div>THREAD</div>
                   <div style={{ textAlign:'center' }}>REPLIES</div>
@@ -253,7 +263,16 @@ export default function CategoryPage({ params }) {
                             <span style={{ fontSize:'15px', fontWeight:'bold', color:'#00ff00', letterSpacing:'0.5px' }}>{thread.title}</span>
                           </div>
                           <div style={{ fontSize:'11px', color:'#005500' }}>
-                            by {thread.user_id.slice(0, 8)}... &nbsp;·&nbsp; {formatDate(thread.created_at)}
+                            by{' '}
+                            <a
+                              href={`/profile/${thread.user_id}`}
+                              onClick={e => e.stopPropagation()}
+                              style={{ color:'#006600', textDecoration:'none' }}
+                              onMouseEnter={e => e.currentTarget.style.color = '#00ff00'}
+                              onMouseLeave={e => e.currentTarget.style.color = '#006600'}>
+                              {getUsername(thread.user_id)}
+                            </a>
+                            &nbsp;·&nbsp; {formatDate(thread.created_at)}
                           </div>
                         </div>
 
