@@ -107,23 +107,6 @@ export default function ProfilePage({ params }) {
   return (
     <main style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', fontFamily: '"Courier New", Courier, monospace', color: '#00ff00' }}>
 
-      <nav style={{ backgroundColor: '#111', borderBottom: '2px solid #00ff00', padding: '10px 0', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ ...containerStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <a href="/" style={{ fontSize: '22px', fontWeight: 'bold', letterSpacing: '2px', color: '#00ff00', textDecoration: 'none' }}>&#9608; GAMER&apos;S CONCLAVE</a>
-          <div style={{ display: 'flex', gap: '12px', fontSize: '13px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <a href="/builds" style={{ color: '#00ff00', textDecoration: 'none' }}>[ BUILDS ]</a>
-            <a href="/games"  style={{ color: '#00ff00', textDecoration: 'none' }}>[ FLASH GAMES ]</a>
-            <a href="/doom"   style={{ color: '#ff4444', textDecoration: 'none' }}>[ DOOM ]</a>
-            <a href="/vote"   style={{ color: '#00ff00', textDecoration: 'none' }}>[ VOTE ]</a>
-            <a href="/ideas"  style={{ color: '#00ff00', textDecoration: 'none' }}>[ IDEAS ]</a>
-            <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none' }}>[ DONATE ]</a>
-            {isSignedIn
-              ? <button onClick={() => signOut({ redirectUrl: '/' })} style={{ background: 'none', border: '1px solid #ff4444', color: '#ff4444', fontFamily: '"Courier New", monospace', fontSize: '13px', cursor: 'pointer', padding: '2px 8px' }}>[ SIGN OUT ]</button>
-              : <a href="/sign-in" style={{ color: '#00ff00', textDecoration: 'none' }}>[ SIGN IN ]</a>
-            }
-          </div>
-        </div>
-      </nav>
 
       {loading ? (
         <div style={{ ...containerStyle, padding: '60px 20px', color: '#006600' }}>&gt; LOADING PROFILE..._</div>
