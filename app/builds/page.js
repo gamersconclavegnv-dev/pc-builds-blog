@@ -472,7 +472,7 @@ export default function BuildsPage() {
               const parts = build.parts ? JSON.parse(build.parts) : {};
               const photos = parts.photos || (parts.photo ? [parts.photo] : []);
               const activePhoto = expandedPhotos[build.id] || 0;
-              const owner = isOwner(build);
+              const owner = isOwner(build) || user?.id === process.env.NEXT_PUBLIC_ADMIN_CLERK_USER_ID;
 
               return (
                 <div key={build.id} style={{ border: '1px solid #00ff00', backgroundColor: '#0d0d0d', padding: '20px' }}>
