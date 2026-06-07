@@ -1,6 +1,8 @@
 'use client';
 import { useAuth, useClerk, useUser } from '@clerk/nextjs';
 
+const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_CLERK_USER_ID;
+
 export default function Nav() {
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
@@ -20,6 +22,9 @@ export default function Nav() {
           <a href="/donate" style={{ color:'#ffff00', textDecoration:'none' }}>[ DONATE ]</a>
           {isSignedIn && user
             ? <>
+                {user.id === ADMIN_ID && (
+                  <a href="/admin" style={{ color:'#ff4444', textDecoration:'none' }}>[ ADMIN ]</a>
+                )}
                 <a href={`/profile/${user.id}`} style={{ color:'#00ff00', textDecoration:'none' }}>[ MY PROFILE ]</a>
                 <button onClick={() => signOut({ redirectUrl: '/' })} style={{ background:'none', border:'1px solid #ff4444', color:'#ff4444', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor:'pointer', padding:'2px 8px' }}>[ SIGN OUT ]</button>
               </>
