@@ -231,7 +231,20 @@ useEffect(() => {
           reactions: { '🔥': 0, '💀': 0, '👾': 0, '⚡': 0, '🖥️': 0 },
           user_id: user?.id || null,
         }]);
-        if (error) throw error;
+       if (error) throw error;
+
+        // notify admin
+        fetch('/api/notify/build', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: sanitize(form.title).toUpperCase(),
+            author: sanitize(form.author),
+            cpu: form.cpu,
+            gpu: form.gpu,
+            description: sanitize(form.description),
+          }),
+        });
       }
       cancelForm();
       setSubmitted(true);

@@ -119,7 +119,19 @@ export default function CategoryPage({ params }) {
       setSubmitting(false);
       return;
     }
-
+  // notify admin
+    fetch('/api/notify/forum', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'thread',
+        username: user.username || user.firstName || 'Unknown',
+        title: newTitle.trim(),
+        body: newBody.trim(),
+        categorySlug: slug,
+        threadId: thread.id,
+      }),
+    });
     setNewTitle('');
     setNewBody('');
     setShowForm(false);

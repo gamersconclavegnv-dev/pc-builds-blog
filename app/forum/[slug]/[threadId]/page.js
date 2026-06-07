@@ -110,7 +110,19 @@ export default function ThreadPage({ params }) {
     .from('forum_threads')
     .update({ updated_at: new Date().toISOString() })
     .eq('id', threadId);
-
+ // notify admin
+  fetch('/api/notify/forum', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'reply',
+      username: user.username || user.firstName || 'Unknown',
+      threadTitle: thread?.title || '',
+      body: replyBody.trim(),
+      categorySlug: slug,
+      threadId,
+    }),
+  });
   setReplyBody('');
   setSubmitting(false);
   await fetchThread();
