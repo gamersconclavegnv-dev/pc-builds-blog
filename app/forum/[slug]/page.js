@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { checkContent } from '../../../lib/wordFilter';
 
 const containerStyle = { maxWidth:'1400px', margin:'0 auto', padding:'0 20px', width:'100%', boxSizing:'border-box' };
+const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_CLERK_USER_ID;
 
 const CATEGORY_ICONS = {
   'introductions':        '👋',
@@ -18,7 +19,6 @@ export default function CategoryPage({ params }) {
   const { slug } = params;
   const { isSignedIn } = useAuth();
   const { user } = useUser();
-  const { signOut } = useClerk();
 
   const [category, setCategory]     = useState(null);
   const [threads, setThreads]       = useState([]);
@@ -32,6 +32,12 @@ export default function CategoryPage({ params }) {
   const [newBody, setNewBody]       = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState('');
+
+  // admin edit thread title
+  const [editingThreadId, setEditingThreadId] = useState(null);
+  const [editThreadTitle, setEditThreadTitle] = useState('');
+
+  const isAdmin = user?.id === ADMIN_ID;
 
   useEffect(() => { fetchCategory(); }, [slug]);
 
@@ -70,7 +76,6 @@ export default function CategoryPage({ params }) {
       });
       setPostCounts(counts);
 
-      // fetch usernames for all thread authors
       const userIds = [...new Set(threads.map(t => t.user_id))];
       const { data: profileRows } = await supabase
         .from('profiles')
@@ -89,11 +94,13 @@ export default function CategoryPage({ params }) {
     if (!newTitle.trim()) { setFormError('Thread title is required.'); return; }
     if (!newBody.trim())  { setFormError('Opening post body is required.'); return; }
 
-    const titleCheck = checkContent(newTitle, 'Title');
-    if (titleCheck) { setFormError(titleCheck); return; }
-
-    const bodyCheck = checkContent(newBody, 'Post');
-    if (bodyCheck) { setFormError(bodyCheck); return; }
+    // skip word filter for admin
+    if (!isAdmin) {
+      const titleCheck = checkContent(newTitle, 'Title');
+      if (titleCheck) { setFormError(titleCheck); return; }
+      const bodyCheck = checkContent(newBody, 'Post');
+      if (bodyCheck) { setFormError(bodyCheck); return; }
+    }
 
     setSubmitting(true);
     setFormError('');
@@ -119,7 +126,7 @@ export default function CategoryPage({ params }) {
       setSubmitting(false);
       return;
     }
-  // notify admin
+
     fetch('/api/notify/forum', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -132,10 +139,35 @@ export default function CategoryPage({ params }) {
         threadId: thread.id,
       }),
     });
+
     setNewTitle('');
     setNewBody('');
     setShowForm(false);
     setSubmitting(false);
+    fetchCategory();
+  };
+
+  const handleAdminDeleteThread = async (threadId) => {
+    if (!confirm('Delete this thread and ALL its posts?')) return;
+    await supabase.from('forum_posts').delete().eq('thread_id', threadId);
+    await supabase.from('forum_threads').delete().eq('id', threadId);
+    fetchCategory();
+  };
+
+  const handleAdminTogglePin = async (thread) => {
+    await supabase.from('forum_threads').update({ pinned: !thread.pinned }).eq('id', thread.id);
+    fetchCategory();
+  };
+
+  const handleAdminToggleLock = async (thread) => {
+    await supabase.from('forum_threads').update({ locked: !thread.locked }).eq('id', thread.id);
+    fetchCategory();
+  };
+
+  const handleAdminEditTitle = async (threadId) => {
+    if (!editThreadTitle.trim()) return;
+    await supabase.from('forum_threads').update({ title: editThreadTitle.trim() }).eq('id', threadId);
+    setEditingThreadId(null);
     fetchCategory();
   };
 
@@ -146,7 +178,6 @@ export default function CategoryPage({ params }) {
   };
 
   const getUsername = (userId) => profiles[userId] || userId.slice(0, 8) + '...';
-
   const icon = CATEGORY_ICONS[slug] || '📁';
 
   return (
@@ -185,7 +216,6 @@ export default function CategoryPage({ params }) {
             ) : (
               <div style={{ border:'1px solid #00ff00', backgroundColor:'#0d0d0d', padding:'20px', maxWidth:'700px' }}>
                 <div style={{ fontSize:'12px', color:'#006600', marginBottom:'14px', letterSpacing:'1px' }}>&gt; CREATE NEW THREAD</div>
-
                 <div style={{ marginBottom:'12px' }}>
                   <div style={{ fontSize:'11px', color:'#006600', marginBottom:'4px' }}>TITLE</div>
                   <input
@@ -194,11 +224,10 @@ export default function CategoryPage({ params }) {
                     maxLength={200}
                     placeholder="Thread title..."
                     style={{ width:'100%', backgroundColor:'#0a0a0a', border:'1px solid #003300', color:'#00ff00', fontFamily:'"Courier New", monospace', fontSize:'14px', padding:'8px 10px', boxSizing:'border-box', outline:'none' }}
-                    onFocus={e  => e.target.style.borderColor = '#00ff00'}
-                    onBlur={e   => e.target.style.borderColor = '#003300'}
+                    onFocus={e => e.target.style.borderColor = '#00ff00'}
+                    onBlur={e  => e.target.style.borderColor = '#003300'}
                   />
                 </div>
-
                 <div style={{ marginBottom:'14px' }}>
                   <div style={{ fontSize:'11px', color:'#006600', marginBottom:'4px' }}>OPENING POST</div>
                   <textarea
@@ -211,20 +240,13 @@ export default function CategoryPage({ params }) {
                     onBlur={e  => e.target.style.borderColor = '#003300'}
                   />
                 </div>
-
-                {formError && (
-                  <div style={{ fontSize:'12px', color:'#ff4444', marginBottom:'12px' }}>&gt; ERROR: {formError}</div>
-                )}
-
+                {formError && <div style={{ fontSize:'12px', color:'#ff4444', marginBottom:'12px' }}>&gt; ERROR: {formError}</div>}
                 <div style={{ display:'flex', gap:'10px' }}>
-                  <button
-                    onClick={handleSubmitThread}
-                    disabled={submitting}
+                  <button onClick={handleSubmitThread} disabled={submitting}
                     style={{ background:'none', border:'1px solid #00ff00', color:'#00ff00', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor: submitting ? 'not-allowed' : 'pointer', padding:'8px 20px', opacity: submitting ? 0.5 : 1 }}>
                     {submitting ? '[ POSTING... ]' : '[ POST THREAD ]'}
                   </button>
-                  <button
-                    onClick={() => { setShowForm(false); setFormError(''); setNewTitle(''); setNewBody(''); }}
+                  <button onClick={() => { setShowForm(false); setFormError(''); setNewTitle(''); setNewBody(''); }}
                     style={{ background:'none', border:'1px solid #444', color:'#666', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor:'pointer', padding:'8px 20px' }}>
                     [ CANCEL ]
                   </button>
@@ -234,14 +256,8 @@ export default function CategoryPage({ params }) {
           </div>
         )}
 
-        {/* STATES */}
         {loading && <div style={{ color:'#006600', fontSize:'14px' }}>&gt; LOADING THREADS..._</div>}
-
-        {notFound && (
-          <div style={{ color:'#ff4444', fontSize:'14px' }}>
-            &gt; CATEGORY NOT FOUND. <a href="/forum" style={{ color:'#00ff00' }}>BACK TO FORUM</a>
-          </div>
-        )}
+        {notFound && <div style={{ color:'#ff4444', fontSize:'14px' }}>&gt; CATEGORY NOT FOUND. <a href="/forum" style={{ color:'#00ff00' }}>BACK TO FORUM</a></div>}
 
         {/* THREAD LIST */}
         {!loading && !notFound && (
@@ -252,7 +268,6 @@ export default function CategoryPage({ params }) {
               </div>
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:'2px' }}>
-
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 90px', gap:'10px', padding:'8px 16px', fontSize:'10px', color:'#004400', letterSpacing:'1px', borderBottom:'1px solid #002200' }}>
                   <div>THREAD</div>
                   <div style={{ textAlign:'center' }}>REPLIES</div>
@@ -261,41 +276,77 @@ export default function CategoryPage({ params }) {
 
                 {threads.map(thread => {
                   const replies = (postCounts[thread.id] || 1) - 1;
+                  const isEditingThis = editingThreadId === thread.id;
+
                   return (
-                    <a key={thread.id} href={`/forum/${slug}/${thread.id}`} style={{ textDecoration:'none' }}>
-                      <div
-                        style={{ display:'grid', gridTemplateColumns:'1fr 70px 90px', gap:'10px', padding:'14px 16px', border:'1px solid #002200', backgroundColor:'#0d0d0d', alignItems:'center', cursor:'pointer', transition:'border-color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = '#00ff00'}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = '#002200'}>
+                    <div key={thread.id}>
+                      <a href={`/forum/${slug}/${thread.id}`} style={{ textDecoration:'none' }}>
+                        <div
+                          style={{ display:'grid', gridTemplateColumns:'1fr 70px 90px', gap:'10px', padding:'14px 16px', border:'1px solid #002200', backgroundColor:'#0d0d0d', alignItems:'center', cursor:'pointer', transition:'border-color 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.borderColor = '#00ff00'}
+                          onMouseLeave={e => e.currentTarget.style.borderColor = '#002200'}>
 
-                        <div>
-                          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'3px' }}>
-                            {thread.pinned && <span style={{ fontSize:'10px', color:'#ffff00', border:'1px solid #ffff00', padding:'1px 5px', letterSpacing:'1px' }}>📌 PINNED</span>}
-                            {thread.locked && <span style={{ fontSize:'10px', color:'#ff4444', border:'1px solid #ff4444', padding:'1px 5px', letterSpacing:'1px' }}>🔒 LOCKED</span>}
-                            <span style={{ fontSize:'15px', fontWeight:'bold', color:'#00ff00', letterSpacing:'0.5px' }}>{thread.title}</span>
+                          <div>
+                            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'3px', flexWrap:'wrap' }}>
+                              {thread.pinned && <span style={{ fontSize:'10px', color:'#ffff00', border:'1px solid #ffff00', padding:'1px 5px', letterSpacing:'1px' }}>📌 PINNED</span>}
+                              {thread.locked && <span style={{ fontSize:'10px', color:'#ff4444', border:'1px solid #ff4444', padding:'1px 5px', letterSpacing:'1px' }}>🔒 LOCKED</span>}
+                              <span style={{ fontSize:'15px', fontWeight:'bold', color:'#00ff00', letterSpacing:'0.5px' }}>{thread.title}</span>
+                            </div>
+                            <div style={{ fontSize:'11px', color:'#005500' }}>
+                              by{' '}
+                              <a href={`/profile/${thread.user_id}`} onClick={e => e.stopPropagation()}
+                                style={{ color:'#006600', textDecoration:'none' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#00ff00'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#006600'}>
+                                {getUsername(thread.user_id)}
+                              </a>
+                              &nbsp;·&nbsp; {formatDate(thread.created_at)}
+                            </div>
                           </div>
-                          <div style={{ fontSize:'11px', color:'#005500' }}>
-                            by{' '}
-                            <a
-                              href={`/profile/${thread.user_id}`}
-                              onClick={e => e.stopPropagation()}
-                              style={{ color:'#006600', textDecoration:'none' }}
-                              onMouseEnter={e => e.currentTarget.style.color = '#00ff00'}
-                              onMouseLeave={e => e.currentTarget.style.color = '#006600'}>
-                              {getUsername(thread.user_id)}
-                            </a>
-                            &nbsp;·&nbsp; {formatDate(thread.created_at)}
-                          </div>
-                        </div>
 
-                        <div style={{ textAlign:'center', fontSize:'16px', fontWeight:'bold', color:'#009900' }}>
-                          {replies < 0 ? 0 : replies}
+                          <div style={{ textAlign:'center', fontSize:'16px', fontWeight:'bold', color:'#009900' }}>
+                            {replies < 0 ? 0 : replies}
+                          </div>
+                          <div style={{ textAlign:'right', fontSize:'11px', color:'#006600' }}>
+                            {formatDate(thread.updated_at)}
+                          </div>
                         </div>
-                        <div style={{ textAlign:'right', fontSize:'11px', color:'#006600' }}>
-                          {formatDate(thread.updated_at)}
+                      </a>
+
+                      {/* ADMIN CONTROLS */}
+                      {isAdmin && (
+                        <div style={{ display:'flex', gap:'8px', padding:'6px 16px', backgroundColor:'#080808', borderLeft:'1px solid #002200', borderRight:'1px solid #002200', borderBottom:'1px solid #002200', flexWrap:'wrap', alignItems:'center' }}>
+                          <span style={{ fontSize:'10px', color:'#440000', letterSpacing:'1px', marginRight:'4px' }}>ADMIN:</span>
+                          <button onClick={() => { setEditingThreadId(thread.id); setEditThreadTitle(thread.title); }}
+                            style={{ background:'none', border:'1px solid #666600', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'2px 8px' }}>EDIT TITLE</button>
+                          <button onClick={() => handleAdminTogglePin(thread)}
+                            style={{ background:'none', border:'1px solid #666600', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'2px 8px' }}>
+                            {thread.pinned ? 'UNPIN' : 'PIN'}
+                          </button>
+                          <button onClick={() => handleAdminToggleLock(thread)}
+                            style={{ background:'none', border:'1px solid #666600', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'2px 8px' }}>
+                            {thread.locked ? 'UNLOCK' : 'LOCK'}
+                          </button>
+                          <button onClick={() => handleAdminDeleteThread(thread.id)}
+                            style={{ background:'none', border:'1px solid #ff4444', color:'#ff4444', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'2px 8px' }}>DELETE</button>
                         </div>
-                      </div>
-                    </a>
+                      )}
+
+                      {/* ADMIN EDIT TITLE FORM */}
+                      {isAdmin && isEditingThis && (
+                        <div style={{ display:'flex', gap:'8px', padding:'8px 16px', backgroundColor:'#0a0a0a', border:'1px solid #ffff00', alignItems:'center' }}>
+                          <input
+                            value={editThreadTitle}
+                            onChange={e => setEditThreadTitle(e.target.value)}
+                            style={{ flex:1, backgroundColor:'#0a0a0a', border:'1px solid #ffff00', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'13px', padding:'6px 10px', outline:'none' }}
+                          />
+                          <button onClick={() => handleAdminEditTitle(thread.id)}
+                            style={{ background:'none', border:'1px solid #ffff00', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:'4px 12px' }}>SAVE</button>
+                          <button onClick={() => setEditingThreadId(null)}
+                            style={{ background:'none', border:'1px solid #444', color:'#666', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:'4px 12px' }}>CANCEL</button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -303,15 +354,10 @@ export default function CategoryPage({ params }) {
           </>
         )}
 
-        {/* SIGN IN PROMPT */}
         {!isSignedIn && !loading && !notFound && (
           <div style={{ marginTop:'24px', border:'1px solid #003300', padding:'20px', backgroundColor:'#0d0d0d', maxWidth:'500px' }}>
-            <div style={{ fontSize:'13px', color:'#009900', marginBottom:'12px' }}>
-              &gt; Sign in to create threads and reply to posts.
-            </div>
-            <a href="/sign-in" style={{ color:'#00ff00', fontSize:'13px', textDecoration:'none', border:'1px solid #00ff00', padding:'8px 20px', display:'inline-block', letterSpacing:'1px' }}>
-              [ SIGN IN ]
-            </a>
+            <div style={{ fontSize:'13px', color:'#009900', marginBottom:'12px' }}>&gt; Sign in to create threads and reply to posts.</div>
+            <a href="/sign-in" style={{ color:'#00ff00', fontSize:'13px', textDecoration:'none', border:'1px solid #00ff00', padding:'8px 20px', display:'inline-block', letterSpacing:'1px' }}>[ SIGN IN ]</a>
           </div>
         )}
       </div>

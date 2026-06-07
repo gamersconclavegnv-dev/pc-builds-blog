@@ -5,6 +5,7 @@ import { useAuth, useUser, useClerk } from '@clerk/nextjs';
 import { supabase } from '../../../../lib/supabase';
 
 const containerStyle = { maxWidth:'1400px', margin:'0 auto', padding:'0 20px', width:'100%', boxSizing:'border-box' };
+const ADMIN_ID = process.env.NEXT_PUBLIC_ADMIN_CLERK_USER_ID;
 
 function ViewCount({ pageType, pageId }) {
   const [count, setCount] = useState(0);
@@ -24,7 +25,6 @@ export default function ThreadPage({ params }) {
   const { slug, threadId } = params;
   const { isSignedIn } = useAuth();
   const { user } = useUser();
-  const { signOut } = useClerk();
 
   const [category, setCategory]   = useState(null);
   const [thread, setThread]       = useState(null);
@@ -42,17 +42,14 @@ export default function ThreadPage({ params }) {
   const [editError, setEditError]         = useState('');
 
   const bottomRef = useRef(null);
+  const isAdmin = user?.id === ADMIN_ID;
 
   useEffect(() => {
     fetchThread();
     fetch('/api/views', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pageType: 'thread',
-        pageId: threadId,
-        userId: user?.id || null,
-      }),
+      body: JSON.stringify({ pageType: 'thread', pageId: threadId, userId: user?.id || null }),
     });
   }, [threadId, slug]);
 
@@ -109,8 +106,10 @@ export default function ThreadPage({ params }) {
   const handleReply = async () => {
     if (!replyBody.trim()) { setReplyError('Reply cannot be empty.'); return; }
 
-    const bodyCheck = checkContent(replyBody, 'Reply');
-    if (bodyCheck) { setReplyError(bodyCheck); return; }
+    if (!isAdmin) {
+      const bodyCheck = checkContent(replyBody, 'Reply');
+      if (bodyCheck) { setReplyError(bodyCheck); return; }
+    }
 
     setSubmitting(true);
     setReplyError('');
@@ -119,16 +118,9 @@ export default function ThreadPage({ params }) {
       .from('forum_posts')
       .insert({ thread_id: threadId, user_id: user.id, body: replyBody.trim() });
 
-    if (error) {
-      setReplyError('Failed to post reply. Try again.');
-      setSubmitting(false);
-      return;
-    }
+    if (error) { setReplyError('Failed to post reply. Try again.'); setSubmitting(false); return; }
 
-    await supabase
-      .from('forum_threads')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', threadId);
+    await supabase.from('forum_threads').update({ updated_at: new Date().toISOString() }).eq('id', threadId);
 
     fetch('/api/notify/forum', {
       method: 'POST',
@@ -155,26 +147,50 @@ export default function ThreadPage({ params }) {
     setEditError('');
   };
 
-  const handleSaveEdit = async (postId) => {
+  const handleSaveEdit = async (postId, postUserId) => {
     if (!editBody.trim()) { setEditError('Post cannot be empty.'); return; }
 
-    const bodyCheck = checkContent(editBody, 'Post');
-    if (bodyCheck) { setEditError(bodyCheck); return; }
+    if (!isAdmin) {
+      const bodyCheck = checkContent(editBody, 'Post');
+      if (bodyCheck) { setEditError(bodyCheck); return; }
+    }
 
-    const { error } = await supabase
+    // admin can edit any post, owner can only edit their own
+    const query = supabase
       .from('forum_posts')
       .update({ body: editBody.trim(), updated_at: new Date().toISOString() })
-      .eq('id', postId)
-      .eq('user_id', user.id);
+      .eq('id', postId);
 
+    if (!isAdmin) query.eq('user_id', user.id);
+
+    const { error } = await query;
     if (error) { setEditError('Failed to save edit.'); return; }
     setEditingPostId(null);
     fetchThread();
   };
 
-  const handleDeletePost = async (postId) => {
+  const handleDeletePost = async (postId, postUserId) => {
     if (!confirm('Delete this post?')) return;
-    await supabase.from('forum_posts').delete().eq('id', postId).eq('user_id', user.id);
+    const query = supabase.from('forum_posts').delete().eq('id', postId);
+    if (!isAdmin) query.eq('user_id', user.id);
+    await query;
+    fetchThread();
+  };
+
+  const handleAdminDeleteThread = async () => {
+    if (!confirm('Delete this entire thread and ALL its posts?')) return;
+    await supabase.from('forum_posts').delete().eq('thread_id', threadId);
+    await supabase.from('forum_threads').delete().eq('id', threadId);
+    window.location.href = `/forum/${slug}`;
+  };
+
+  const handleAdminToggleLock = async () => {
+    await supabase.from('forum_threads').update({ locked: !thread.locked }).eq('id', threadId);
+    fetchThread();
+  };
+
+  const handleAdminTogglePin = async () => {
+    await supabase.from('forum_threads').update({ pinned: !thread.pinned }).eq('id', threadId);
     fetchThread();
   };
 
@@ -202,12 +218,33 @@ export default function ThreadPage({ params }) {
           </div>
 
           {thread && (
-            <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
-              <h1 style={{ fontSize:'22px', margin:0, letterSpacing:'2px', color:'#00ff00' }}>{thread.title}</h1>
-              {thread.pinned && <span style={{ fontSize:'10px', color:'#ffff00', border:'1px solid #ffff00', padding:'2px 7px', letterSpacing:'1px' }}>📌 PINNED</span>}
-              {thread.locked && <span style={{ fontSize:'10px', color:'#ff4444', border:'1px solid #ff4444', padding:'2px 7px', letterSpacing:'1px' }}>🔒 LOCKED</span>}
-              <ViewCount pageType="thread" pageId={threadId} />
-            </div>
+            <>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+                <h1 style={{ fontSize:'22px', margin:0, letterSpacing:'2px', color:'#00ff00' }}>{thread.title}</h1>
+                {thread.pinned && <span style={{ fontSize:'10px', color:'#ffff00', border:'1px solid #ffff00', padding:'2px 7px', letterSpacing:'1px' }}>📌 PINNED</span>}
+                {thread.locked && <span style={{ fontSize:'10px', color:'#ff4444', border:'1px solid #ff4444', padding:'2px 7px', letterSpacing:'1px' }}>🔒 LOCKED</span>}
+                <ViewCount pageType="thread" pageId={threadId} />
+              </div>
+
+              {/* ADMIN THREAD CONTROLS */}
+              {isAdmin && (
+                <div style={{ display:'flex', gap:'8px', marginTop:'12px', flexWrap:'wrap', alignItems:'center' }}>
+                  <span style={{ fontSize:'10px', color:'#440000', letterSpacing:'1px' }}>ADMIN:</span>
+                  <button onClick={handleAdminTogglePin}
+                    style={{ background:'none', border:'1px solid #666600', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'3px 10px' }}>
+                    {thread.pinned ? '📌 UNPIN' : '📌 PIN'}
+                  </button>
+                  <button onClick={handleAdminToggleLock}
+                    style={{ background:'none', border:'1px solid #666600', color:'#ffff00', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'3px 10px' }}>
+                    {thread.locked ? '🔒 UNLOCK' : '🔒 LOCK'}
+                  </button>
+                  <button onClick={handleAdminDeleteThread}
+                    style={{ background:'none', border:'1px solid #ff4444', color:'#ff4444', fontFamily:'"Courier New", monospace', fontSize:'10px', cursor:'pointer', padding:'3px 10px' }}>
+                    🗑 DELETE THREAD
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -215,22 +252,18 @@ export default function ThreadPage({ params }) {
       <div style={{ ...containerStyle, padding:'30px 20px' }}>
 
         {loading && <div style={{ color:'#006600', fontSize:'14px' }}>&gt; LOADING THREAD..._</div>}
-
-        {notFound && (
-          <div style={{ color:'#ff4444', fontSize:'14px' }}>
-            &gt; THREAD NOT FOUND. <a href={`/forum/${slug}`} style={{ color:'#00ff00' }}>BACK TO CATEGORY</a>
-          </div>
-        )}
+        {notFound && <div style={{ color:'#ff4444', fontSize:'14px' }}>&gt; THREAD NOT FOUND. <a href={`/forum/${slug}`} style={{ color:'#00ff00' }}>BACK TO CATEGORY</a></div>}
 
         {/* POSTS */}
         {!loading && !notFound && (
           <div style={{ display:'flex', flexDirection:'column', gap:'2px' }}>
-
             {posts.map((post, index) => {
-              const isOp      = index === 0;
-              const isOwner   = isSignedIn && user?.id === post.user_id;
-              const isEditing = editingPostId === post.id;
-              const wasEdited = post.updated_at && post.updated_at !== post.created_at;
+              const isOp        = index === 0;
+              const isOwner     = isSignedIn && user?.id === post.user_id;
+              const canEdit     = isOwner || isAdmin;
+              const canDelete   = (isOwner && !isOp) || isAdmin;
+              const isEditing   = editingPostId === post.id;
+              const wasEdited   = post.updated_at && post.updated_at !== post.created_at;
 
               return (
                 <div key={post.id} style={{ border:`1px solid ${isOp ? '#005500' : '#002200'}`, backgroundColor: isOp ? '#0c0f0c' : '#0d0d0d', padding:'20px' }}>
@@ -248,6 +281,7 @@ export default function ThreadPage({ params }) {
                           {getUsername(post.user_id)}
                         </a>
                         {isOp && <span style={{ marginLeft:'8px', fontSize:'10px', color:'#006600', border:'1px solid #004400', padding:'1px 5px' }}>OP</span>}
+                        {isAdmin && post.user_id !== user.id && <span style={{ marginLeft:'8px', fontSize:'10px', color:'#440000', border:'1px solid #440000', padding:'1px 5px' }}>ADMIN VIEW</span>}
                       </div>
                     </div>
                     <div style={{ fontSize:'11px', color:'#005500', textAlign:'right' }}>
@@ -266,7 +300,7 @@ export default function ThreadPage({ params }) {
                       />
                       {editError && <div style={{ fontSize:'12px', color:'#ff4444', margin:'6px 0' }}>&gt; {editError}</div>}
                       <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
-                        <button onClick={() => handleSaveEdit(post.id)} style={{ background:'none', border:'1px solid #00ff00', color:'#00ff00', fontFamily:'"Courier New", monospace', fontSize:'12px', cursor:'pointer', padding:'5px 14px' }}>[ SAVE ]</button>
+                        <button onClick={() => handleSaveEdit(post.id, post.user_id)} style={{ background:'none', border:'1px solid #00ff00', color:'#00ff00', fontFamily:'"Courier New", monospace', fontSize:'12px', cursor:'pointer', padding:'5px 14px' }}>[ SAVE ]</button>
                         <button onClick={() => { setEditingPostId(null); setEditError(''); }} style={{ background:'none', border:'1px solid #444', color:'#666', fontFamily:'"Courier New", monospace', fontSize:'12px', cursor:'pointer', padding:'5px 14px' }}>[ CANCEL ]</button>
                       </div>
                     </div>
@@ -276,11 +310,19 @@ export default function ThreadPage({ params }) {
                     </div>
                   )}
 
-                  {isOwner && !isEditing && !isLocked && (
-                    <div style={{ display:'flex', gap:'10px', marginTop:'12px', paddingTop:'10px', borderTop:'1px solid #002200' }}>
-                      <button onClick={() => handleStartEdit(post)} style={{ background:'none', border:'none', color:'#006600', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:0 }}>[ EDIT ]</button>
-                      {!isOp && (
-                        <button onClick={() => handleDeletePost(post.id)} style={{ background:'none', border:'none', color:'#550000', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:0 }}>[ DELETE ]</button>
+                  {(canEdit || canDelete) && !isEditing && (isAdmin || !isLocked) && (
+                    <div style={{ display:'flex', gap:'10px', marginTop:'12px', paddingTop:'10px', borderTop:`1px solid ${isAdmin ? '#330000' : '#002200'}` }}>
+                      {canEdit && (
+                        <button onClick={() => handleStartEdit(post)}
+                          style={{ background:'none', border:'none', color: isAdmin && !isOwner ? '#ffff00' : '#006600', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:0 }}>
+                          [ EDIT ]
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => handleDeletePost(post.id, post.user_id)}
+                          style={{ background:'none', border:'none', color:'#550000', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:0 }}>
+                          [ DELETE ]
+                        </button>
                       )}
                     </div>
                   )}
@@ -295,12 +337,15 @@ export default function ThreadPage({ params }) {
         {/* REPLY BOX */}
         {!loading && !notFound && (
           <div style={{ marginTop:'30px' }}>
-            {isLocked ? (
+            {isLocked && !isAdmin ? (
               <div style={{ border:'1px solid #330000', padding:'16px', color:'#660000', fontSize:'13px' }}>
                 🔒 This thread is locked. No new replies.
               </div>
             ) : isSignedIn ? (
-              <div style={{ border:'1px solid #003300', backgroundColor:'#0d0d0d', padding:'20px', maxWidth:'700px' }}>
+              <div style={{ border:`1px solid ${isAdmin && isLocked ? '#ffff00' : '#003300'}`, backgroundColor:'#0d0d0d', padding:'20px', maxWidth:'700px' }}>
+                {isAdmin && isLocked && (
+                  <div style={{ fontSize:'11px', color:'#ffff00', marginBottom:'8px' }}>⚠ ADMIN: Replying to a locked thread</div>
+                )}
                 <div style={{ fontSize:'12px', color:'#006600', marginBottom:'12px', letterSpacing:'1px' }}>&gt; POST A REPLY</div>
                 <textarea
                   value={replyBody}
@@ -311,29 +356,20 @@ export default function ThreadPage({ params }) {
                   onFocus={e => e.target.style.borderColor = '#00ff00'}
                   onBlur={e  => e.target.style.borderColor = '#003300'}
                 />
-                {replyError && (
-                  <div style={{ fontSize:'12px', color:'#ff4444', margin:'8px 0 0' }}>&gt; ERROR: {replyError}</div>
-                )}
-                <button
-                  onClick={handleReply}
-                  disabled={submitting}
+                {replyError && <div style={{ fontSize:'12px', color:'#ff4444', margin:'8px 0 0' }}>&gt; ERROR: {replyError}</div>}
+                <button onClick={handleReply} disabled={submitting}
                   style={{ marginTop:'12px', background:'none', border:'1px solid #00ff00', color:'#00ff00', fontFamily:'"Courier New", monospace', fontSize:'13px', cursor: submitting ? 'not-allowed' : 'pointer', padding:'8px 20px', opacity: submitting ? 0.5 : 1, letterSpacing:'1px' }}>
                   {submitting ? '[ POSTING... ]' : '[ POST REPLY ]'}
                 </button>
               </div>
             ) : (
               <div style={{ border:'1px solid #003300', padding:'20px', backgroundColor:'#0d0d0d', maxWidth:'500px' }}>
-                <div style={{ fontSize:'13px', color:'#009900', marginBottom:'12px' }}>
-                  &gt; Sign in to reply to this thread.
-                </div>
-                <a href="/sign-in" style={{ color:'#00ff00', fontSize:'13px', textDecoration:'none', border:'1px solid #00ff00', padding:'8px 20px', display:'inline-block', letterSpacing:'1px' }}>
-                  [ SIGN IN ]
-                </a>
+                <div style={{ fontSize:'13px', color:'#009900', marginBottom:'12px' }}>&gt; Sign in to reply to this thread.</div>
+                <a href="/sign-in" style={{ color:'#00ff00', fontSize:'13px', textDecoration:'none', border:'1px solid #00ff00', padding:'8px 20px', display:'inline-block', letterSpacing:'1px' }}>[ SIGN IN ]</a>
               </div>
             )}
           </div>
         )}
-
       </div>
 
       <footer style={{ borderTop:'2px solid #00ff00', padding:'20px 0', textAlign:'center', fontSize:'12px', color:'#006600', backgroundColor:'#111' }}>
