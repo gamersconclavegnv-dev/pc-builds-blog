@@ -15,10 +15,47 @@ export async function POST(request) {
       return NextResponse.json({ skipped: true });
     }
 
+    if (userId) {
+      // logged in — check if this user already viewed this page
+      const { data: existing } = await supabase
+        .from('page_views')
+        .select('id')
+        .eq('page_type', pageType)
+        .eq('page_id', pageId)
+        .eq('user_id', userId)
+        .single();
+
+      if (existing) return NextResponse.json({ skipped: true });
+    } else {
+      // guest — use IP address to deduplicate
+      const ip = request.headers.get('cf-connecting-ip') ||
+                 request.headers.get('x-forwarded-for')?.split(',')[0] ||
+                 'unknown';
+
+      const { data: existing } = await supabase
+        .from('page_views')
+        .select('id')
+        .eq('page_type', pageType)
+        .eq('page_id', pageId)
+        .eq('user_id', ip)
+        .single();
+
+      if (existing) return NextResponse.json({ skipped: true });
+
+      // store IP as user_id for guests
+      await supabase.from('page_views').insert({
+        page_type: pageType,
+        page_id: pageId,
+        user_id: ip,
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
     await supabase.from('page_views').insert({
       page_type: pageType,
       page_id: pageId,
-      user_id: userId || null,
+      user_id: userId,
     });
 
     return NextResponse.json({ success: true });
