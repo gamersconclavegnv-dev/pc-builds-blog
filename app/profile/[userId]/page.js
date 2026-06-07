@@ -39,6 +39,7 @@ export default function ProfilePage({ params }) {
 
   const [profile, setProfile]                 = useState(null);
   const [builds, setBuilds]                   = useState([]);
+  const [forumPosts, setForumPosts]           = useState([]);
   const [loading, setLoading]                 = useState(true);
   const [isOwner, setIsOwner]                 = useState(false);
   const [editing, setEditing]                 = useState(false);
@@ -48,7 +49,7 @@ export default function ProfilePage({ params }) {
   const [editForm, setEditForm]               = useState({ username: '', bio: '', avatar_url: '' });
   const [expandedPhotos, setExpandedPhotos]   = useState({});
 
-  useEffect(() => { fetchProfile(); fetchBuilds(); }, [userId]);
+  useEffect(() => { fetchProfile(); fetchBuilds(); fetchForumPosts(); }, [userId]);
   useEffect(() => {
     if (currentUser && userId === currentUser.id) setIsOwner(true);
   }, [currentUser, userId]);
@@ -67,6 +68,45 @@ export default function ProfilePage({ params }) {
   const fetchBuilds = async () => {
     const { data } = await supabase.from('builds').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     setBuilds(data || []);
+  };
+
+  const fetchForumPosts = async () => {
+    // get all posts by this user
+    const { data: posts } = await supabase
+      .from('forum_posts')
+      .select('id, body, created_at, thread_id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (!posts || posts.length === 0) { setForumPosts([]); return; }
+
+    // get thread info for each post
+    const threadIds = [...new Set(posts.map(p => p.thread_id))];
+    const { data: threads } = await supabase
+      .from('forum_threads')
+      .select('id, title, category_id')
+      .in('id', threadIds);
+
+    // get category slugs
+    const categoryIds = [...new Set((threads || []).map(t => t.category_id))];
+    const { data: categories } = await supabase
+      .from('forum_categories')
+      .select('id, slug')
+      .in('id', categoryIds);
+
+    const catMap = {};
+    (categories || []).forEach(c => { catMap[c.id] = c.slug; });
+
+    const threadMap = {};
+    (threads || []).forEach(t => { threadMap[t.id] = { ...t, slug: catMap[t.category_id] }; });
+
+    const enriched = posts.map(p => ({
+      ...p,
+      thread: threadMap[p.thread_id] || null,
+    }));
+
+    setForumPosts(enriched);
   };
 
   const handleAvatarChange = async (e) => {
@@ -104,9 +144,13 @@ export default function ProfilePage({ params }) {
   const totalReactions = builds.reduce((sum, b) =>
     sum + Object.values(b.reactions || {}).reduce((a, v) => a + v, 0), 0);
 
+  const formatDate = (iso) => {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   return (
     <main style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', fontFamily: '"Courier New", Courier, monospace', color: '#00ff00' }}>
-
 
       {loading ? (
         <div style={{ ...containerStyle, padding: '60px 20px', color: '#006600' }}>&gt; LOADING PROFILE..._</div>
@@ -176,7 +220,11 @@ export default function ProfilePage({ params }) {
                         : <div style={{ fontSize: '13px', color: '#004400', marginBottom: '16px' }}>{isOwner ? '> Add a bio to let the conclave know who you are._' : 'No bio yet.'}</div>
                       }
                       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                        {[{ label: 'BUILDS', value: builds.length }, { label: 'REACTIONS RECEIVED', value: totalReactions }].map(s => (
+                        {[
+                          { label: 'BUILDS', value: builds.length },
+                          { label: 'REACTIONS RECEIVED', value: totalReactions },
+                          { label: 'FORUM POSTS', value: forumPosts.length },
+                        ].map(s => (
                           <div key={s.label} style={{ border: '1px solid #003300', padding: '10px 20px', backgroundColor: '#0d0d0d', textAlign: 'center' }}>
                             <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{s.value}</div>
                             <div style={{ fontSize: '10px', color: '#006600', letterSpacing: '1px' }}>{s.label}</div>
@@ -263,12 +311,48 @@ export default function ProfilePage({ params }) {
             </div>
           </div>
 
-          {/* FORUM PLACEHOLDER */}
-          <div style={{ ...containerStyle, padding: '40px 20px' }}>
-            <div style={{ fontSize: '11px', color: '#006600', marginBottom: '4px' }}>&#9608;&#9608; FORUM ACTIVITY &#9608;&#9608;</div>
-            <h2 style={{ fontSize: '24px', margin: '0 0 16px', letterSpacing: '2px' }}>FORUM POSTS</h2>
-            <div style={{ border: '1px solid #003300', padding: '24px', backgroundColor: '#0d0d0d', maxWidth: '500px', color: '#006600', fontSize: '13px' }}>
-              &gt; FORUM COMING SOON — POSTS WILL APPEAR HERE_
+          {/* FORUM POSTS */}
+          <div style={{ borderBottom: '1px solid #003300' }}>
+            <div style={{ ...containerStyle, padding: '40px 20px' }}>
+              <div style={{ fontSize: '11px', color: '#006600', marginBottom: '4px' }}>&#9608;&#9608; FORUM ACTIVITY &#9608;&#9608;</div>
+              <h2 style={{ fontSize: '24px', margin: '0 0 16px', letterSpacing: '2px' }}>FORUM POSTS</h2>
+
+              {forumPosts.length === 0 ? (
+                <div style={{ border: '1px solid #003300', padding: '24px', backgroundColor: '#0d0d0d', maxWidth: '500px', color: '#006600', fontSize: '13px' }}>
+                  &gt; NO FORUM POSTS YET_
+                  {isOwner && (
+                    <div style={{ marginTop: '12px' }}>
+                      <a href="/forum" style={{ color: '#00ff00', textDecoration: 'none', border: '1px solid #00ff00', padding: '6px 16px', display: 'inline-block', letterSpacing: '1px', fontSize: '12px' }}>
+                        [ GO TO FORUM ]
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxWidth: '800px' }}>
+                  {forumPosts.map(post => (
+                    <a
+                      key={post.id}
+                      href={post.thread?.slug ? `/forum/${post.thread.slug}/${post.thread_id}` : '/forum'}
+                      style={{ textDecoration: 'none' }}>
+                      <div
+                        style={{ border: '1px solid #002200', backgroundColor: '#0d0d0d', padding: '14px 16px', transition: 'border-color 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = '#00ff00'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = '#002200'}>
+                        <div style={{ fontSize: '12px', color: '#006600', marginBottom: '6px', letterSpacing: '0.5px' }}>
+                          THREAD: <span style={{ color: '#009900' }}>{post.thread?.title || 'Unknown Thread'}</span>
+                          <span style={{ margin: '0 8px', color: '#003300' }}>·</span>
+                          <span style={{ color: '#005500' }}>{formatDate(post.created_at)}</span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#00cc00', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {post.body.length > 200 ? post.body.slice(0, 200) + '…' : post.body}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                  <a href="/forum" style={{ fontSize: '12px', color: '#006600', textDecoration: 'none', letterSpacing: '1px', marginTop: '8px' }}>&gt; GO TO FORUM →</a>
+                </div>
+              )}
             </div>
           </div>
         </>
