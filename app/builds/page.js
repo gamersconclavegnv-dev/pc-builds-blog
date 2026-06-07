@@ -26,6 +26,7 @@ const labelStyle = {
   display: 'block',
   marginTop: '12px',
 };
+
 const sanitize = (str) => str?.replace(/<[^>]*>/g, '').trim() ?? '';
 const emptyForm = {
   title: '', author: '', cpu: '', gpu: '', motherboard: '', ram: '',
@@ -35,10 +36,7 @@ const emptyForm = {
 const uploadToR2 = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData,
-  });
+  const res = await fetch('/api/upload', { method: 'POST', body: formData });
   if (!res.ok) throw new Error('Upload failed');
   const { url } = await res.json();
   return url;
@@ -51,6 +49,30 @@ const containerStyle = {
   width: '100%',
   boxSizing: 'border-box',
 };
+
+function ViewCount({ buildId, userId }) {
+  const [count, setCount] = useState(null);
+
+  useEffect(() => {
+    // log the view
+    fetch('/api/views', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageType: 'build', pageId: buildId, userId: userId || null }),
+    });
+    // fetch count
+    fetch(`/api/views?pageType=build&pageId=${buildId}`)
+      .then(r => r.json())
+      .then(d => setCount(d.count || 0));
+  }, [buildId]);
+
+  if (count === null) return null;
+  return (
+    <span style={{ fontSize:'11px', color:'#005500', letterSpacing:'1px' }}>
+      👁 {count} {count === 1 ? 'view' : 'views'}
+    </span>
+  );
+}
 
 export default function BuildsPage() {
   const { user } = useUser();
@@ -81,20 +103,22 @@ export default function BuildsPage() {
   }, [user]);
 
   useEffect(() => { fetchBuilds(); }, []);
-useEffect(() => {
-  if (!user) return;
-  const fetchUserReactions = async () => {
-    const { data } = await supabase
-      .from('build_reactions')
-      .select('build_id, emoji')
-      .eq('user_id', user.id);
-    if (!data) return;
-    const mapped = {};
-    data.forEach(r => { mapped[`${r.build_id}-${r.emoji}`] = true; });
-    setUserReactions(mapped);
-  };
-  fetchUserReactions();
-}, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUserReactions = async () => {
+      const { data } = await supabase
+        .from('build_reactions')
+        .select('build_id, emoji')
+        .eq('user_id', user.id);
+      if (!data) return;
+      const mapped = {};
+      data.forEach(r => { mapped[`${r.build_id}-${r.emoji}`] = true; });
+      setUserReactions(mapped);
+    };
+    fetchUserReactions();
+  }, [user]);
+
   const fetchBuilds = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -106,41 +130,37 @@ useEffect(() => {
     setLoading(false);
   };
 
- const handleReaction = async (buildId, emoji) => {
-  if (!user) { alert('Please sign in to react.'); return; }
-  const key = `${buildId}-${emoji}`;
-  if (userReactions[key]) return;
+  const handleReaction = async (buildId, emoji) => {
+    if (!user) { alert('Please sign in to react.'); return; }
+    const key = `${buildId}-${emoji}`;
+    if (userReactions[key]) return;
 
-  setUserReactions(prev => ({ ...prev, [key]: true }));
-  setBuilds(prev => prev.map(build => {
-    if (build.id !== buildId) return build;
-    const current = build.reactions || {};
-    return { ...build, reactions: { ...current, [emoji]: (current[emoji] || 0) + 1 } };
-  }));
+    setUserReactions(prev => ({ ...prev, [key]: true }));
+    setBuilds(prev => prev.map(build => {
+      if (build.id !== buildId) return build;
+      const current = build.reactions || {};
+      return { ...build, reactions: { ...current, [emoji]: (current[emoji] || 0) + 1 } };
+    }));
 
-  const { error: insertError } = await supabase
-    .from('build_reactions')
-    .insert({ build_id: buildId, user_id: user.id, emoji });
+    const { error: insertError } = await supabase
+      .from('build_reactions')
+      .insert({ build_id: buildId, user_id: user.id, emoji });
 
-  if (insertError) {
-    setUserReactions(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
-    return;
-  }
+    if (insertError) {
+      setUserReactions(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+      return;
+    }
 
-  const { data: current } = await supabase.from('builds').select('reactions').eq('id', buildId).single();
-  const updated = { ...(current?.reactions || {}), [emoji]: ((current?.reactions?.[emoji]) || 0) + 1 };
-  await supabase.from('builds').update({ reactions: updated }).eq('id', buildId);
-};
+    const { data: current } = await supabase.from('builds').select('reactions').eq('id', buildId).single();
+    const updated = { ...(current?.reactions || {}), [emoji]: ((current?.reactions?.[emoji]) || 0) + 1 };
+    await supabase.from('builds').update({ reactions: updated }).eq('id', buildId);
+  };
 
   const handlePhotosChange = async (e) => {
     const files = Array.from(e.target.files);
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     const invalidFiles = files.filter(f => !validTypes.includes(f.type));
-    if (invalidFiles.length > 0) {
-      alert('Only image files are allowed (JPG, PNG, GIF, WEBP).');
-      e.target.value = '';
-      return;
-}
+    if (invalidFiles.length > 0) { alert('Only image files are allowed (JPG, PNG, GIF, WEBP).'); e.target.value = ''; return; }
     if (!files.length) return;
     const MAX = 5;
     const remaining = MAX - form.photos.length;
@@ -151,9 +171,7 @@ useEffect(() => {
     try {
       const urls = await Promise.all(toProcess.map(f => uploadToR2(f)));
       setForm(prev => ({ ...prev, photos: [...prev.photos, ...urls] }));
-    } catch (err) {
-      alert('Failed to process photos. Please try again.');
-    }
+    } catch (err) { alert('Failed to process photos. Please try again.'); }
     setUploadingPhotos(false);
   };
 
@@ -207,11 +225,10 @@ useEffect(() => {
       case: form.case, partLink: form.partLink, photos: form.photos,
     });
 
-   
     const lastPost = localStorage.getItem('gc_last_post');
     if (lastPost && Date.now() - parseInt(lastPost) < 60000) {
       alert('Please wait a minute before posting another build.');
-     return;
+      return;
     }
     try {
       if (editingId) {
@@ -231,9 +248,8 @@ useEffect(() => {
           reactions: { '🔥': 0, '💀': 0, '👾': 0, '⚡': 0, '🖥️': 0 },
           user_id: user?.id || null,
         }]);
-       if (error) throw error;
+        if (error) throw error;
 
-        // notify admin
         fetch('/api/notify/build', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -299,8 +315,6 @@ useEffect(() => {
 
   return (
     <main style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', fontFamily: '"Courier New", Courier, monospace', color: '#00ff00' }}>
-
-  
 
       {/* DISCLAIMER */}
       <div style={{ backgroundColor: '#1a0000', border: '1px solid #ff4444', color: '#ff4444', padding: '12px 20px', fontSize: '12px', textAlign: 'center', letterSpacing: '1px' }}>
@@ -496,8 +510,11 @@ useEffect(() => {
                     )}
                   </div>
 
-                  <div style={{ fontSize: '11px', color: '#006600', marginBottom: '14px' }}>
-                    posted by <a href={build.user_id ? `/profile/${build.user_id}` : '#'} style={{ color: '#006600', textDecoration: 'none' }}>{build.author}</a> · {new Date(build.created_at).toLocaleDateString()}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '11px', color: '#006600' }}>
+                      posted by <a href={build.user_id ? `/profile/${build.user_id}` : '#'} style={{ color: '#006600', textDecoration: 'none' }}>{build.author}</a> · {new Date(build.created_at).toLocaleDateString()}
+                    </div>
+                    <ViewCount buildId={build.id} userId={user?.id} />
                   </div>
 
                   <div style={{ fontSize: '12px', color: '#009900', marginBottom: '14px', lineHeight: '1.8' }}>
@@ -544,7 +561,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* FOOTER */}
       <footer style={{ borderTop: '2px solid #00ff00', padding: '20px 0', textAlign: 'center', fontSize: '12px', color: '#006600', backgroundColor: '#111' }}>
         <a href="/donate" style={{ color: '#ffff00', textDecoration: 'none', marginRight: '20px' }}>[ DONATE ]</a>
         <span>GAMER&apos;S CONCLAVE &copy; 2025 — BUILT FOR PASSION, NOT PROFIT</span>

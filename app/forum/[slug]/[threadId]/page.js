@@ -6,6 +6,20 @@ import { supabase } from '../../../../lib/supabase';
 
 const containerStyle = { maxWidth:'1400px', margin:'0 auto', padding:'0 20px', width:'100%', boxSizing:'border-box' };
 
+function ViewCount({ pageType, pageId }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    fetch(`/api/views?pageType=${pageType}&pageId=${pageId}`)
+      .then(r => r.json())
+      .then(d => setCount(d.count || 0));
+  }, [pageId]);
+  return (
+    <span style={{ fontSize:'11px', color:'#005500', letterSpacing:'1px' }}>
+      👁 {count} {count === 1 ? 'VIEW' : 'VIEWS'}
+    </span>
+  );
+}
+
 export default function ThreadPage({ params }) {
   const { slug, threadId } = params;
   const { isSignedIn } = useAuth();
@@ -15,28 +29,36 @@ export default function ThreadPage({ params }) {
   const [category, setCategory]   = useState(null);
   const [thread, setThread]       = useState(null);
   const [posts, setPosts]         = useState([]);
-  const [profiles, setProfiles]   = useState({}); // { user_id: { username, avatar_url } }
+  const [profiles, setProfiles]   = useState({});
   const [loading, setLoading]     = useState(true);
   const [notFound, setNotFound]   = useState(false);
 
-  // reply form
   const [replyBody, setReplyBody]     = useState('');
   const [submitting, setSubmitting]   = useState(false);
   const [replyError, setReplyError]   = useState('');
 
-  // edit state
   const [editingPostId, setEditingPostId] = useState(null);
   const [editBody, setEditBody]           = useState('');
   const [editError, setEditError]         = useState('');
 
   const bottomRef = useRef(null);
 
-  useEffect(() => { fetchThread(); }, [threadId, slug]);
+  useEffect(() => {
+    fetchThread();
+    fetch('/api/views', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pageType: 'thread',
+        pageId: threadId,
+        userId: user?.id || null,
+      }),
+    });
+  }, [threadId, slug]);
 
   const fetchThread = async () => {
     setLoading(true);
 
-    // get category
     const { data: cat } = await supabase
       .from('forum_categories')
       .select('id, name, slug')
@@ -46,7 +68,6 @@ export default function ThreadPage({ params }) {
     if (!cat) { setNotFound(true); setLoading(false); return; }
     setCategory(cat);
 
-    // get thread
     const { data: th } = await supabase
       .from('forum_threads')
       .select('*')
@@ -57,7 +78,6 @@ export default function ThreadPage({ params }) {
     if (!th) { setNotFound(true); setLoading(false); return; }
     setThread(th);
 
-    // get posts
     const { data: postRows } = await supabase
       .from('forum_posts')
       .select('*')
@@ -67,7 +87,6 @@ export default function ThreadPage({ params }) {
     const posts = postRows || [];
     setPosts(posts);
 
-    // fetch profiles for all unique user_ids
     const userIds = [...new Set([th.user_id, ...posts.map(p => p.user_id)])];
     const { data: profileRows } = await supabase
       .from('profiles')
@@ -88,46 +107,47 @@ export default function ThreadPage({ params }) {
   };
 
   const handleReply = async () => {
-  if (!replyBody.trim()) { setReplyError('Reply cannot be empty.'); return; }
+    if (!replyBody.trim()) { setReplyError('Reply cannot be empty.'); return; }
 
-  const bodyCheck = checkContent(replyBody, 'Reply');
-  if (bodyCheck) { setReplyError(bodyCheck); return; }
+    const bodyCheck = checkContent(replyBody, 'Reply');
+    if (bodyCheck) { setReplyError(bodyCheck); return; }
 
-  setSubmitting(true);
-  setReplyError('');
+    setSubmitting(true);
+    setReplyError('');
 
-  const { error } = await supabase
-    .from('forum_posts')
-    .insert({ thread_id: threadId, user_id: user.id, body: replyBody.trim() });
+    const { error } = await supabase
+      .from('forum_posts')
+      .insert({ thread_id: threadId, user_id: user.id, body: replyBody.trim() });
 
-  if (error) {
-    setReplyError('Failed to post reply. Try again.');
+    if (error) {
+      setReplyError('Failed to post reply. Try again.');
+      setSubmitting(false);
+      return;
+    }
+
+    await supabase
+      .from('forum_threads')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', threadId);
+
+    fetch('/api/notify/forum', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'reply',
+        username: user.username || user.firstName || 'Unknown',
+        threadTitle: thread?.title || '',
+        body: replyBody.trim(),
+        categorySlug: slug,
+        threadId,
+      }),
+    });
+
+    setReplyBody('');
     setSubmitting(false);
-    return;
-  }
-
-  await supabase
-    .from('forum_threads')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', threadId);
- // notify admin
-  fetch('/api/notify/forum', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: 'reply',
-      username: user.username || user.firstName || 'Unknown',
-      threadTitle: thread?.title || '',
-      body: replyBody.trim(),
-      categorySlug: slug,
-      threadId,
-    }),
-  });
-  setReplyBody('');
-  setSubmitting(false);
-  await fetchThread();
-  setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-};
+    await fetchThread();
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  };
 
   const handleStartEdit = (post) => {
     setEditingPostId(post.id);
@@ -135,22 +155,22 @@ export default function ThreadPage({ params }) {
     setEditError('');
   };
 
- const handleSaveEdit = async (postId) => {
-  if (!editBody.trim()) { setEditError('Post cannot be empty.'); return; }
+  const handleSaveEdit = async (postId) => {
+    if (!editBody.trim()) { setEditError('Post cannot be empty.'); return; }
 
-  const bodyCheck = checkContent(editBody, 'Post');
-  if (bodyCheck) { setEditError(bodyCheck); return; }
+    const bodyCheck = checkContent(editBody, 'Post');
+    if (bodyCheck) { setEditError(bodyCheck); return; }
 
-  const { error } = await supabase
-    .from('forum_posts')
-    .update({ body: editBody.trim(), updated_at: new Date().toISOString() })
-    .eq('id', postId)
-    .eq('user_id', user.id);
+    const { error } = await supabase
+      .from('forum_posts')
+      .update({ body: editBody.trim(), updated_at: new Date().toISOString() })
+      .eq('id', postId)
+      .eq('user_id', user.id);
 
-  if (error) { setEditError('Failed to save edit.'); return; }
-  setEditingPostId(null);
-  fetchThread();
-};
+    if (error) { setEditError('Failed to save edit.'); return; }
+    setEditingPostId(null);
+    fetchThread();
+  };
 
   const handleDeletePost = async (postId) => {
     if (!confirm('Delete this post?')) return;
@@ -170,12 +190,11 @@ export default function ThreadPage({ params }) {
   return (
     <main style={{ backgroundColor:'#0a0a0a', minHeight:'100vh', fontFamily:'"Courier New", Courier, monospace', color:'#00ff00' }}>
 
-
       {/* BREADCRUMB + HEADER */}
       <div style={{ borderBottom:'1px solid #003300' }}>
         <div style={{ ...containerStyle, padding:'30px 20px 20px' }}>
           <div style={{ fontSize:'11px', color:'#006600', marginBottom:'10px' }}>
-            <a href="/forum"           style={{ color:'#006600', textDecoration:'none' }}>FORUM</a>
+            <a href="/forum" style={{ color:'#006600', textDecoration:'none' }}>FORUM</a>
             <span style={{ margin:'0 8px' }}>&gt;</span>
             <a href={`/forum/${slug}`} style={{ color:'#006600', textDecoration:'none' }}>{category?.name?.toUpperCase() || slug.toUpperCase()}</a>
             <span style={{ margin:'0 8px' }}>&gt;</span>
@@ -187,6 +206,7 @@ export default function ThreadPage({ params }) {
               <h1 style={{ fontSize:'22px', margin:0, letterSpacing:'2px', color:'#00ff00' }}>{thread.title}</h1>
               {thread.pinned && <span style={{ fontSize:'10px', color:'#ffff00', border:'1px solid #ffff00', padding:'2px 7px', letterSpacing:'1px' }}>📌 PINNED</span>}
               {thread.locked && <span style={{ fontSize:'10px', color:'#ff4444', border:'1px solid #ff4444', padding:'2px 7px', letterSpacing:'1px' }}>🔒 LOCKED</span>}
+              <ViewCount pageType="thread" pageId={threadId} />
             </div>
           )}
         </div>
@@ -194,7 +214,6 @@ export default function ThreadPage({ params }) {
 
       <div style={{ ...containerStyle, padding:'30px 20px' }}>
 
-        {/* STATES */}
         {loading && <div style={{ color:'#006600', fontSize:'14px' }}>&gt; LOADING THREAD..._</div>}
 
         {notFound && (
@@ -208,18 +227,16 @@ export default function ThreadPage({ params }) {
           <div style={{ display:'flex', flexDirection:'column', gap:'2px' }}>
 
             {posts.map((post, index) => {
-              const isOp        = index === 0;
-              const isOwner     = isSignedIn && user?.id === post.user_id;
-              const isEditing   = editingPostId === post.id;
-              const wasEdited   = post.updated_at && post.updated_at !== post.created_at;
+              const isOp      = index === 0;
+              const isOwner   = isSignedIn && user?.id === post.user_id;
+              const isEditing = editingPostId === post.id;
+              const wasEdited = post.updated_at && post.updated_at !== post.created_at;
 
               return (
                 <div key={post.id} style={{ border:`1px solid ${isOp ? '#005500' : '#002200'}`, backgroundColor: isOp ? '#0c0f0c' : '#0d0d0d', padding:'20px' }}>
 
-                  {/* POST HEADER */}
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px', flexWrap:'wrap', gap:'8px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                      {/* avatar placeholder */}
                       <div style={{ width:'32px', height:'32px', border:`1px solid ${isOp ? '#00ff00' : '#003300'}`, backgroundColor:'#111', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', flexShrink:0 }}>
                         {profiles[post.user_id]?.avatar_url
                           ? <img src={profiles[post.user_id].avatar_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
@@ -239,7 +256,6 @@ export default function ThreadPage({ params }) {
                     </div>
                   </div>
 
-                  {/* POST BODY */}
                   {isEditing ? (
                     <div>
                       <textarea
@@ -260,7 +276,6 @@ export default function ThreadPage({ params }) {
                     </div>
                   )}
 
-                  {/* OWNER ACTIONS */}
                   {isOwner && !isEditing && !isLocked && (
                     <div style={{ display:'flex', gap:'10px', marginTop:'12px', paddingTop:'10px', borderTop:'1px solid #002200' }}>
                       <button onClick={() => handleStartEdit(post)} style={{ background:'none', border:'none', color:'#006600', fontFamily:'"Courier New", monospace', fontSize:'11px', cursor:'pointer', padding:0 }}>[ EDIT ]</button>
