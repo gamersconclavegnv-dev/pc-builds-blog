@@ -8,11 +8,11 @@ export const metadata = {
   openGraph: {
     title: "Gamer's Conclave",
     description: "Share your PC build. Show your rig. Join the community.",
-    url: "https://gamersconclave.com",
+    url: "https://gamersconclave.net",
     siteName: "Gamer's Conclave",
     images: [
       {
-        url: "https://gamersconclave.com/og-image.png",
+        url: "https://gamersconclave.net/og-image.png",
         width: 1200,
         height: 630,
       }
@@ -23,7 +23,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Gamer's Conclave",
     description: "Share your PC build. Show your rig. Join the community.",
-    images: ["https://gamersconclave.com/og-image.png"],
+    images: ["https://gamersconclave.net/og-image.png"],
   },
 };
 
