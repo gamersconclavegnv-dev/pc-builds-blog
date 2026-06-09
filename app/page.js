@@ -3,73 +3,94 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth, useClerk, useUser } from '@clerk/nextjs';
 import { supabase } from '../lib/supabase';
 
-// GPU patterns match with or without brand prefix
-// e.g. "RTX 3090", "NVIDIA RTX 3090", "3090" all match
 const GPU_TIERS = [
+  // RTX 5000 series
+  { match: /5090/i,              score: 14000 },
+  { match: /5080/i,              score: 12500 },
+  { match: /5070\s*ti/i,         score: 11500 },
+  { match: /5070/i,              score: 10500 },
+  { match: /5060\s*ti/i,         score: 9200 },
+  { match: /5060/i,              score: 8400 },
+  // RTX 4000 series
   { match: /4090/i,              score: 10000 },
   { match: /4080\s*super/i,      score: 9400 },
   { match: /4080/i,              score: 9200 },
-  { match: /7900\s*xtx/i,        score: 9100 },
   { match: /4070\s*ti\s*super/i, score: 8700 },
   { match: /4070\s*ti/i,         score: 8400 },
-  { match: /7900\s*xt/i,         score: 8200 },
   { match: /4070\s*super/i,      score: 8000 },
   { match: /4070/i,              score: 7800 },
+  { match: /4060\s*ti/i,         score: 6500 },
+  { match: /4060/i,              score: 5500 },
+  { match: /4050/i,              score: 4500 },
+  // RTX 3000 series
   { match: /3090\s*ti/i,         score: 7600 },
   { match: /3090/i,              score: 7400 },
-  { match: /7800\s*xt/i,         score: 7200 },
   { match: /3080\s*ti/i,         score: 7100 },
   { match: /3080\s*12/i,         score: 6900 },
   { match: /3080/i,              score: 6800 },
-  { match: /6900\s*xt/i,         score: 6700 },
-  { match: /4060\s*ti/i,         score: 6500 },
-  { match: /7700\s*xt/i,         score: 6300 },
   { match: /3070\s*ti/i,         score: 6200 },
   { match: /3070/i,              score: 6000 },
-  { match: /6800\s*xt/i,         score: 5900 },
-  { match: /6800/i,              score: 5700 },
-  { match: /4060/i,              score: 5500 },
   { match: /3060\s*ti/i,         score: 5300 },
-  { match: /6700\s*xt/i,         score: 5100 },
   { match: /3060/i,              score: 4800 },
-  { match: /6600\s*xt/i,         score: 4600 },
-  { match: /6600/i,              score: 4400 },
+  { match: /3050/i,              score: 3900 },
+  // RTX 2000 series
   { match: /2080\s*ti/i,         score: 4300 },
   { match: /2080\s*super/i,      score: 4200 },
   { match: /2080/i,              score: 4100 },
-  { match: /3050/i,              score: 3900 },
   { match: /2070\s*super/i,      score: 3900 },
   { match: /2070/i,              score: 3800 },
-  { match: /6500\s*xt/i,         score: 3600 },
   { match: /2060\s*super/i,      score: 3600 },
   { match: /2060/i,              score: 3400 },
-  { match: /5700\s*xt/i,         score: 3400 },
-  { match: /5700/i,              score: 3200 },
+  // GTX 1000 series
   { match: /1080\s*ti/i,         score: 3100 },
   { match: /1080/i,              score: 2800 },
-  { match: /5600\s*xt/i,         score: 2700 },
   { match: /1070\s*ti/i,         score: 2600 },
+  { match: /1070/i,              score: 2400 },
   { match: /1660\s*ti/i,         score: 2500 },
   { match: /1660\s*super/i,      score: 2400 },
-  { match: /1070/i,              score: 2400 },
   { match: /1660/i,              score: 2200 },
-  { match: /5500\s*xt/i,         score: 2300 },
-  { match: /980\s*ti/i,          score: 2000 },
   { match: /1060/i,              score: 1900 },
-  { match: /980/i,               score: 1700 },
-  { match: /580/i,               score: 1800 },
-  { match: /970/i,               score: 1500 },
-  { match: /570/i,               score: 1600 },
   { match: /1050\s*ti/i,         score: 1400 },
   { match: /1050/i,              score: 1200 },
-  { match: /960/i,               score: 1000 },
+  // AMD RX 9000 series
+  { match: /9070\s*xt/i,         score: 10200 },
+  { match: /9070/i,              score: 9600 },
+  { match: /9060\s*xt/i,         score: 8200 },
+  { match: /9060/i,              score: 7400 },
+  // AMD RX 7000 series
+  { match: /7900\s*xtx/i,        score: 9100 },
+  { match: /7900\s*xt/i,         score: 8200 },
+  { match: /7800\s*xt/i,         score: 7200 },
+  { match: /7700\s*xt/i,         score: 6300 },
+  { match: /7600\s*xt/i,         score: 5600 },
+  { match: /7600/i,              score: 5200 },
+  // AMD RX 6000 series
+  { match: /6950\s*xt/i,         score: 8800 },
+  { match: /6900\s*xt/i,         score: 6700 },
+  { match: /6800\s*xt/i,         score: 5900 },
+  { match: /6800/i,              score: 5700 },
+  { match: /6700\s*xt/i,         score: 5100 },
+  { match: /6650\s*xt/i,         score: 4800 },
+  { match: /6600\s*xt/i,         score: 4600 },
+  { match: /6600/i,              score: 4400 },
+  { match: /6500\s*xt/i,         score: 3600 },
+  // AMD RX 5000 series
+  { match: /5700\s*xt/i,         score: 3400 },
+  { match: /5700/i,              score: 3200 },
+  { match: /5600\s*xt/i,         score: 2700 },
+  { match: /5500\s*xt/i,         score: 2300 },
+  // Older AMD
+  { match: /580/i,               score: 1800 },
+  { match: /570/i,               score: 1600 },
   { match: /560/i,               score: 1100 },
+  { match: /980\s*ti/i,          score: 2000 },
+  { match: /980/i,               score: 1700 },
+  { match: /970/i,               score: 1500 },
+  { match: /960/i,               score: 1000 },
   { match: /(arc|uhd|iris|integrated)/i, score: 600 },
   { match: /vega/i,              score: 700 },
 ];
 
-// CPU patterns match model number with or without brand/family prefix
-// e.g. "5700X", "Ryzen 7 5700X", "AMD Ryzen 7 5700X" all match
 const CPU_TIERS = [
   // Ryzen 9000 (AM5)
   { match: /9950x/i,   score: 10000 },
@@ -86,6 +107,10 @@ const CPU_TIERS = [
   { match: /7700/i,    score: 7400 },
   { match: /7600x/i,   score: 7200 },
   { match: /7600/i,    score: 6800 },
+  // Intel 15th gen (Arrow Lake)
+  { match: /i9-15[0-9]{3}k/i,     score: 9800 },
+  { match: /i7-15[0-9]{3}k/i,     score: 8600 },
+  { match: /i5-15[0-9]{3}k/i,     score: 7600 },
   // Intel 13th/14th gen
   { match: /i9-1[34][0-9]{3}ks/i, score: 9600 },
   { match: /i9-1[34][0-9]{3}k/i,  score: 9200 },
@@ -175,12 +200,12 @@ function scoreCores(n) {
   for (let i=keys.length-1;i>=0;i--) { if (n>=keys[i]) return CORE_SCORES[keys[i]]; } return 100;
 }
 function getRank(score) {
-  if (score>=20000) return { rank:'SILICON OVERLORD',   color:'#ff4444' };
-  if (score>=16000) return { rank:'RIG OF THE GODS',    color:'#ff8800' };
-  if (score>=12000) return { rank:'ABSOLUTE UNIT',      color:'#ffff00' };
-  if (score>=9000)  return { rank:'CERTIFIED BEAST',    color:'#00ff00' };
-  if (score>=6000)  return { rank:'BLAZING FAST',       color:'#00ff00' };
-  if (score>=4000)  return { rank:'SOLID BUILD',        color:'#009900' };
+  if (score>=24000) return { rank:'SILICON OVERLORD',   color:'#ff4444' };
+  if (score>=20000) return { rank:'RIG OF THE GODS',    color:'#ff8800' };
+  if (score>=16000) return { rank:'ABSOLUTE UNIT',      color:'#ffff00' };
+  if (score>=12000) return { rank:'CERTIFIED BEAST',    color:'#00ff00' };
+  if (score>=8000)  return { rank:'BLAZING FAST',       color:'#00ff00' };
+  if (score>=5000)  return { rank:'SOLID BUILD',        color:'#009900' };
   if (score>=2000)  return { rank:'DAILY DRIVER',       color:'#006600' };
   return                   { rank:'NEEDS AN UPGRADE',   color:'#ff4444' };
 }
@@ -347,8 +372,11 @@ export default function Home() {
         @keyframes glowPulse{0%,100%{text-shadow:0 0 8px currentColor}50%{text-shadow:0 0 24px currentColor,0 0 48px currentColor}}
         .bench-result{animation:glowPulse 1.5s ease-in-out infinite}
         .lb-row:hover{background:#0d0d0d}
+        .bench-grid{display:grid;grid-template-columns:minmax(300px,560px) 1fr;gap:32px;align-items:start}
+        @media(max-width:768px){.bench-grid{grid-template-columns:1fr;}}
+        .lb-table{width:100%;border-collapse:collapse;font-size:12px;}
+        @media(max-width:480px){.lb-cpu,.lb-gpu{display:none}}
       `}</style>
-    
 
       {/* HERO */}
       <div style={{ borderBottom:'1px solid #003300' }}>
@@ -386,7 +414,7 @@ export default function Home() {
           <div style={{ fontSize:'11px', color:'#006600' }}>&#9608;&#9608; DIAGNOSTICS &#9608;&#9608;</div>
           <h2 style={{ fontSize:'28px', margin:'5px 0 24px', letterSpacing:'2px' }}>PC BENCHMARK</h2>
 
-          <div style={{ display:'grid', gridTemplateColumns:'minmax(300px,560px) 1fr', gap:'32px', alignItems:'start' }}>
+          <div className="bench-grid">
 
             {/* BENCHMARK TOOL */}
             <div style={{ border:'1px solid #00ff00', backgroundColor:'#0d0d0d' }}>
@@ -425,21 +453,16 @@ export default function Home() {
                       ⚠ BROWSERS HAVE LIMITED HARDWARE ACCESS<br/>
                       <span style={{ color:'#006600' }}>VERIFY EACH FIELD — CORRECT IF WRONG</span>
                     </div>
-
                     <label style={lStyle}>YOUR CPU <span style={{ color:'#004400' }}>(cannot be auto-detected)</span></label>
                     <input style={iStyle} value={cpuInput} onChange={e=>setCpuInput(e.target.value)} placeholder="e.g. Ryzen 7 5800X3D or i7-13700K"/>
-
                     <label style={lStyle}>YOUR GPU <span style={{ color:'#004400' }}>(auto-detected — correct if wrong)</span></label>
-                    <input style={iStyle} value={gpuInput} onChange={e=>setGpuInput(e.target.value)} placeholder="e.g. RTX 3090 or RX 6800 XT"/>
-
+                    <input style={iStyle} value={gpuInput} onChange={e=>setGpuInput(e.target.value)} placeholder="e.g. RTX 3090 or RX 9070 XT"/>
                     <label style={lStyle}>RAM IN GB <span style={{ color:'#004400' }}>(browser caps at 8GB — enter actual)</span></label>
                     <input style={{ ...iStyle, width:'140px' }} value={ramInput} onChange={e=>setRamInput(e.target.value)} placeholder="e.g. 64" type="number" min="1" max="512"/>
-
                     <div style={{ fontSize:'11px', color:'#004400', marginTop:'8px' }}>
                       CPU CORES DETECTED: <span style={{ color:'#006600' }}>{detectedSpecs?.cores}</span> &nbsp;·&nbsp;
                       PLATFORM: <span style={{ color:'#006600' }}>{detectedSpecs?.platform}</span>
                     </div>
-
                     <div style={{ display:'flex', gap:'10px', marginTop:'20px' }}>
                       <button onClick={runBenchmark}
                         style={{ flex:1, backgroundColor:'#00ff00', color:'#000', border:'none', padding:'10px', fontSize:'13px', fontFamily:'"Courier New", monospace', fontWeight:'bold', cursor:'pointer', letterSpacing:'2px' }}>
@@ -480,7 +503,6 @@ export default function Home() {
 \\___)=(___/`}</pre>
                     <div className="bench-result" style={{ fontSize:'22px', fontWeight:'bold', letterSpacing:'3px', color:benchResult.color, marginBottom:'6px' }}>{benchResult.rank}</div>
                     <div style={{ fontSize:'28px', fontWeight:'bold', color:'#00ff00', marginBottom:'16px' }}>{benchResult.total.toLocaleString()} pts</div>
-
                     <div style={{ textAlign:'left', border:'1px solid #003300', padding:'12px', backgroundColor:'#050505', marginBottom:'16px' }}>
                       <div style={{ fontSize:'10px', color:'#006600', letterSpacing:'1px', marginBottom:'8px' }}>SCORE BREAKDOWN</div>
                       {[
@@ -495,7 +517,6 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
-
                     <div style={{ display:'flex', gap:'10px', justifyContent:'center', flexWrap:'wrap' }}>
                       {!submitted ? (
                         <button onClick={submitScore} disabled={submitting}
@@ -512,7 +533,6 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-
               </div>
             </div>
 
@@ -525,30 +545,34 @@ export default function Home() {
               {leaderboard.length===0 ? (
                 <div style={{ padding:'30px', color:'#006600', fontSize:'13px', textAlign:'center' }}>&gt; NO SCORES YET — BE THE FIRST_</div>
               ) : (
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'12px' }}>
-                  <thead>
-                    <tr style={{ borderBottom:'1px solid #003300' }}>
-                      {['#','USER','CPU','GPU','SCORE'].map(h=>(
-                        <th key={h} style={{ padding:'8px 12px', color:'#006600', fontWeight:'normal', textAlign:h==='SCORE'?'right':'left', letterSpacing:'1px', fontSize:'10px' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.map((row,i)=>{
-                      const {rank,color}=getRank(row.score);
-                      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
-                      return (
-                        <tr key={row.id} className="lb-row" style={{ borderBottom:'1px solid #001100' }}>
-                          <td style={{ padding:'8px 12px', color:i<3?'#ffff00':'#006600', fontWeight:i<3?'bold':'normal' }}>{medal}</td>
-                          <td style={{ padding:'8px 12px', color:'#00ff00' }}>{row.username}</td>
-                          <td style={{ padding:'8px 12px', color:'#009900', maxWidth:'120px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.cpu}</td>
-                          <td style={{ padding:'8px 12px', color:'#009900', maxWidth:'140px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.gpu.replace(/.*?((?:RTX|RX|GTX|Arc)\s*\S+).*/i,'$1')||row.gpu.slice(0,20)}</td>
-                          <td style={{ padding:'8px 12px', color, textAlign:'right', fontWeight:'bold' }}>{row.score.toLocaleString()}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div style={{ overflowX:'auto' }}>
+                  <table className="lb-table">
+                    <thead>
+                      <tr style={{ borderBottom:'1px solid #003300' }}>
+                        <th style={{ padding:'8px 12px', color:'#006600', fontWeight:'normal', textAlign:'left', letterSpacing:'1px', fontSize:'10px' }}>#</th>
+                        <th style={{ padding:'8px 12px', color:'#006600', fontWeight:'normal', textAlign:'left', letterSpacing:'1px', fontSize:'10px' }}>USER</th>
+                        <th className="lb-cpu" style={{ padding:'8px 12px', color:'#006600', fontWeight:'normal', textAlign:'left', letterSpacing:'1px', fontSize:'10px' }}>CPU</th>
+                        <th className="lb-gpu" style={{ padding:'8px 12px', color:'#006600', fontWeight:'normal', textAlign:'left', letterSpacing:'1px', fontSize:'10px' }}>GPU</th>
+                        <th style={{ padding:'8px 12px', color:'#006600', fontWeight:'normal', textAlign:'right', letterSpacing:'1px', fontSize:'10px' }}>SCORE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboard.map((row,i)=>{
+                        const {rank,color}=getRank(row.score);
+                        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
+                        return (
+                          <tr key={row.id} className="lb-row" style={{ borderBottom:'1px solid #001100' }}>
+                            <td style={{ padding:'8px 12px', color:i<3?'#ffff00':'#006600', fontWeight:i<3?'bold':'normal' }}>{medal}</td>
+                            <td style={{ padding:'8px 12px', color:'#00ff00' }}>{row.username}</td>
+                            <td className="lb-cpu" style={{ padding:'8px 12px', color:'#009900', maxWidth:'120px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.cpu}</td>
+                            <td className="lb-gpu" style={{ padding:'8px 12px', color:'#009900', maxWidth:'140px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.gpu.replace(/.*?((?:RTX|RX|GTX|Arc)\s*\S+).*/i,'$1')||row.gpu.slice(0,20)}</td>
+                            <td style={{ padding:'8px 12px', color, textAlign:'right', fontWeight:'bold' }}>{row.score.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 
